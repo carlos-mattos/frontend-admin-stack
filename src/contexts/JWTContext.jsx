@@ -57,6 +57,8 @@ export function JWTProvider({ children }) {
   useEffect(() => {
     const init = async () => {
       try {
+        // Temporarily disabled for development
+        /*
         const serviceToken = window.localStorage.getItem('serviceToken');
         if (serviceToken && verifyToken(serviceToken)) {
           setSession(serviceToken);
@@ -74,11 +76,27 @@ export function JWTProvider({ children }) {
             type: LOGOUT
           });
         }
+        */
+        // Force login state for development
+        dispatch({
+          type: LOGIN,
+          payload: {
+            isLoggedIn: true,
+            user: {
+              id: 'dev-user',
+              name: 'Development User',
+              email: 'dev@example.com'
+            }
+          }
+        });
       } catch (err) {
         console.error(err);
+        // Temporarily disabled for development
+        /*
         dispatch({
           type: LOGOUT
         });
+        */
       }
     };
 
@@ -86,6 +104,8 @@ export function JWTProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
+    // Temporarily disabled for development
+    /*
     const response = await axios.post('/api/account/login', { email, password });
     const { serviceToken, user } = response.data;
     setSession(serviceToken);
@@ -94,6 +114,19 @@ export function JWTProvider({ children }) {
       payload: {
         isLoggedIn: true,
         user
+      }
+    });
+    */
+    // Force login for development
+    dispatch({
+      type: LOGIN,
+      payload: {
+        isLoggedIn: true,
+        user: {
+          id: 'dev-user',
+          name: 'Development User',
+          email: 'dev@example.com'
+        }
       }
     });
   };

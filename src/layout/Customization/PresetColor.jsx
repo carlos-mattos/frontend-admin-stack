@@ -86,7 +86,7 @@ export default function PresetColorPage() {
 
   return (
     <Stack spacing={1} sx={{ px: 2, pb: 2 }}>
-      <Typography variant="h5">PRESET COLOR</Typography>
+      <Typography variant="h5">Cores</Typography>
       <Grid container spacing={1.5} sx={{ alignItems: 'center' }}>
         {colorOptions.map((color, index) => (
           <PresetColorBox key={index} color={color} presetColor={presetColor} setPresetColor={onChangePresetColor} />

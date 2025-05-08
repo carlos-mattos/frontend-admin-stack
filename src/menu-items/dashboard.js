@@ -1,5 +1,13 @@
 // assets
-import { IconDashboard, IconDeviceAnalytics, IconFileInvoice, IconArticle, IconLifebuoy } from '@tabler/icons-react';
+import {
+  IconArticle,
+  IconCalendar,
+  IconClipboardList,
+  IconDashboard,
+  IconDeviceAnalytics,
+  IconFileInvoice,
+  IconLifebuoy
+} from '@tabler/icons-react';
 
 const icons = {
   IconDashboard: IconDashboard,
@@ -13,48 +21,53 @@ const icons = {
 
 const dashboard = {
   id: 'dashboard',
-  title: 'dashboard',
+  title: '',
   icon: icons.IconDashboard,
   type: 'group',
   children: [
     {
       id: 'default',
-      title: 'default',
+      title: 'Dashboard',
       type: 'item',
       url: '/dashboard/default',
       icon: icons.IconDashboard,
       breadcrumbs: false
     },
     {
-      id: 'analytics',
-      title: 'analytics',
-      type: 'item',
-      url: '/dashboard/analytics',
-      icon: icons.IconDeviceAnalytics,
-      breadcrumbs: false
+      id: 'register',
+      title: 'Cadastros',
+      type: 'collapse',
+      icon: IconClipboardList,
+      children: [
+        {
+          id: 'customers',
+          title: 'Clientes',
+          type: 'item',
+          url: '/apps/clientes',
+          breadcrumbs: false
+        },
+        {
+          id: 'professionals',
+          title: 'Profissionais',
+          type: 'item',
+          url: '/apps/profissionais',
+          breadcrumbs: false
+        },
+        {
+          id: 'services',
+          title: 'Serviços',
+          type: 'item',
+          url: '/apps/servicos',
+          breadcrumbs: false
+        }
+      ]
     },
     {
-      id: 'invoice1',
-      title: 'invoice',
-      icon: icons.IconFileInvoice,
+      id: 'calendar',
+      title: 'Calendário',
       type: 'item',
-      url: '/dashboard/invoice',
-      breadcrumbs: false
-    },
-    {
-      id: 'crm1',
-      title: 'crm',
-      icon: icons.IconLifebuoy,
-      type: 'item',
-      url: '/dashboard/crm',
-      breadcrumbs: false
-    },
-    {
-      id: 'blog1',
-      title: 'blog',
-      icon: icons.IconArticle,
-      type: 'item',
-      url: '/dashboard/blog',
+      url: '/apps/calendario',
+      icon: IconCalendar,
       breadcrumbs: false
     }
   ]

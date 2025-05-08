@@ -2,25 +2,16 @@ import PropTypes from 'prop-types';
 import { memo } from 'react';
 
 // material-ui
-import { useTheme } from '@mui/material/styles';
-import Avatar from '@mui/material/Avatar';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid2';
 import LinearProgress from '@mui/material/LinearProgress';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
-import ListItemText from '@mui/material/ListItemText';
+import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
 
 import { linearProgressClasses } from '@mui/material/LinearProgress';
 
 // project imports
 import { ThemeMode } from 'config';
-
-// assets
-import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
 
 // ==============================|| PROGRESS BAR WITH LABEL ||============================== //
 
@@ -87,39 +78,7 @@ function MenuCard() {
           right: -96
         }
       }}
-    >
-      <Box sx={{ p: 2 }}>
-        <List disablePadding sx={{ pb: 1 }}>
-          <ListItem alignItems="flex-start" disableGutters disablePadding>
-            <ListItemAvatar sx={{ mt: 0 }}>
-              <Avatar
-                variant="rounded"
-                sx={{
-                  ...theme.typography.commonAvatar,
-                  ...theme.typography.largeAvatar,
-                  color: 'primary.main',
-                  border: theme.palette.mode === ThemeMode.DARK ? '1px solid' : 'none',
-                  borderColor: 'primary.main',
-                  bgcolor: 'background.paper'
-                }}
-              >
-                <TableChartOutlinedIcon fontSize="inherit" />
-              </Avatar>
-            </ListItemAvatar>
-            <ListItemText
-              sx={{ mt: 0 }}
-              primary={
-                <Typography variant="subtitle1" sx={{ color: theme.palette.mode === ThemeMode.DARK ? 'dark.light' : 'primary.800' }}>
-                  Get Extra Space
-                </Typography>
-              }
-              secondary={<Typography variant="caption"> 28/23 GB</Typography>}
-            />
-          </ListItem>
-        </List>
-        <LinearProgressWithLabel value={80} />
-      </Box>
-    </Card>
+    ></Card>
   );
 }
 

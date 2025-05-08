@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useState } from 'react';
 
 // material-ui
-import { useTheme } from '@mui/material/styles';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
@@ -10,33 +10,27 @@ import Fab from '@mui/material/Fab';
 import Grid from '@mui/material/Grid2';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import Tab from '@mui/material/Tab';
+import { useTheme } from '@mui/material/styles';
 import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
 
 // third party
 import PerfectScrollbar from 'react-perfect-scrollbar';
 
 // project imports
-import FontFamily from './FontFamily';
-import BoxContainer from './BoxContainer';
-import PresetColor from './PresetColor';
-import Layout from './Layout';
-import InputFilled from './InputFilled';
 import BorderRadius from './BorderRadius';
+import FontFamily from './FontFamily';
+import PresetColor from './PresetColor';
 import ThemeModeLayout from './ThemeMode';
-import SidebarDrawer from './SidebarDrawer';
-import MenuOrientation from './MenuOrientation';
 
 import { ThemeMode } from 'config';
+import useConfig from 'hooks/useConfig';
 import MainCard from 'ui-component/cards/MainCard';
 import AnimateButton from 'ui-component/extended/AnimateButton';
-import useConfig from 'hooks/useConfig';
 
 // assets
-import { IconSettings, IconPlus, IconTextSize, IconColorSwatch } from '@tabler/icons-react';
+import { IconPlus, IconSettings } from '@tabler/icons-react';
 
 function CustomTabPanel({ children, value, index, ...other }) {
   return (
@@ -104,10 +98,10 @@ export default function Customization() {
           <PerfectScrollbar>
             <MainCard content={false} border={false}>
               <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2.5 }}>
-                <Typography variant="h5">Theme Customization</Typography>
+                <Typography variant="h5">Personalização</Typography>
                 <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
                   <Button variant="outlined" color="error" size="small" onClick={() => onReset()}>
-                    Reset
+                    Resetar
                   </Button>
                   <IconButton sx={{ p: 0, color: 'grey.600' }} onClick={handleToggle}>
                     <IconPlus size={24} style={{ transform: 'rotate(45deg)' }} />
@@ -126,10 +120,7 @@ export default function Customization() {
                   centered
                   onChange={handleChange}
                   aria-label="basic tabs example"
-                >
-                  <Tab label={<IconColorSwatch />} {...a11yProps(0)} sx={{ width: '50%' }} />
-                  <Tab label={<IconTextSize />} {...a11yProps(1)} sx={{ width: '50%' }} />
-                </Tabs>
+                ></Tabs>
               </Box>
               <CustomTabPanel value={value} index={0}>
                 <Grid container spacing={2.5}>
@@ -138,34 +129,10 @@ export default function Customization() {
                     <ThemeModeLayout />
                     <Divider />
                   </Grid>
+
                   <Grid size={12}>
                     {/* Theme Preset Color */}
                     <PresetColor />
-                    <Divider />
-                  </Grid>
-                  <Grid size={12}>
-                    {/* Input Background */}
-                    <InputFilled />
-                    <Divider />
-                  </Grid>
-                  <Grid size={12}>
-                    {/* Theme Width */}
-                    <BoxContainer />
-                    <Divider />
-                  </Grid>
-                  <Grid size={12}>
-                    {/* Theme Layout */}
-                    <Layout />
-                    <Divider />
-                  </Grid>
-                  <Grid size={12}>
-                    {/* Sidebar Drawer */}
-                    <SidebarDrawer />
-                    <Divider />
-                  </Grid>
-                  <Grid size={12}>
-                    {/* Menu Orientation */}
-                    <MenuOrientation />
                     <Divider />
                   </Grid>
                 </Grid>

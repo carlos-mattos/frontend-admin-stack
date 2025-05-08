@@ -1,97 +1,53 @@
-// material-ui
-import { useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import Avatar from '@mui/material/Avatar';
+import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import { useTheme } from '@mui/material/styles';
+import Toolbar from '@mui/material/Toolbar';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import React from 'react';
 
 // project imports
 import LogoSection from '../LogoSection';
-import SearchSection from './SearchSection';
-import MobileSection from './MobileSection';
-import ProfileSection from './ProfileSection';
-import LocalizationSection from './LocalizationSection';
-import MegaMenuSection from './MegaMenuSection';
-import FullScreenSection from './FullScreenSection';
-import NotificationSection from './NotificationSection';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
-import { MenuOrientation, ThemeMode } from 'config';
+import { MenuOrientation } from 'config';
 import useConfig from 'hooks/useConfig';
 
-// assets
-import { IconMenu2 } from '@tabler/icons-react';
-
-// ==============================|| MAIN NAVBAR / HEADER ||============================== //
+import { IconChevronLeft, IconMenu2 } from '@tabler/icons-react';
 
 export default function Header() {
   const theme = useTheme();
-  const downMD = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmUp = useMediaQuery(theme.breakpoints.up('sm'));
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
 
   const { mode, menuOrientation } = useConfig();
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
-  const isHorizontal = menuOrientation === MenuOrientation.HORIZONTAL && !downMD;
+  const isHorizontal = menuOrientation === MenuOrientation.HORIZONTAL && !useMediaQuery(theme.breakpoints.down('md'));
 
   return (
-    <>
-      {/* logo & toggler button */}
-      <Box sx={{ width: downMD ? 'auto' : 228, display: 'flex' }}>
-        <Box component="span" sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
-          <LogoSection />
-        </Box>
+    <AppBar position="fixed" color="inherit" elevation={0} sx={{ bgcolor: 'background.paper' }}>
+      <Toolbar sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+        {/* Drawer toggler */}
         {!isHorizontal && (
-          <Avatar
-            variant="rounded"
-            sx={{
-              ...theme.typography.commonAvatar,
-              ...theme.typography.mediumAvatar,
-              overflow: 'hidden',
-              transition: 'all .2s ease-in-out',
-              bgcolor: mode === ThemeMode.DARK ? 'dark.main' : 'secondary.light',
-              color: mode === ThemeMode.DARK ? 'secondary.main' : 'secondary.dark',
-              '&:hover': {
-                bgcolor: mode === ThemeMode.DARK ? 'secondary.main' : 'secondary.dark',
-                color: mode === ThemeMode.DARK ? 'secondary.light' : 'secondary.light'
-              }
-            }}
-            onClick={() => handlerDrawerOpen(!drawerOpen)}
-            color="inherit"
-          >
-            <IconMenu2 stroke={1.5} size="20px" />
-          </Avatar>
+          <IconButton edge="start" onClick={() => handlerDrawerOpen(!drawerOpen)} sx={{ mr: 2 }} size={isSmUp ? 'medium' : 'small'}>
+            {drawerOpen ? <IconChevronLeft size={20} /> : <IconMenu2 size={20} />}
+          </IconButton>
         )}
-      </Box>
 
-      {/* header search */}
-      <SearchSection />
-      <Box sx={{ flexGrow: 1 }} />
-      <Box sx={{ flexGrow: 1 }} />
+        {/* Logo (only when open on md+) */}
+        {drawerOpen && isMdUp && (
+          <Box sx={{ flexGrow: 1 }}>
+            <LogoSection />
+          </Box>
+        )}
 
-      {/* mega-menu */}
-      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <MegaMenuSection />
-      </Box>
+        <Box sx={{ flexGrow: 1 }} />
 
-      {/* live customization & localization */}
-      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-        <LocalizationSection />
-      </Box>
-
-      {/* notification */}
-      <NotificationSection />
-
-      {/* full sceen toggler */}
-      <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
-        <FullScreenSection />
-      </Box>
-
-      {/* profile */}
-      <ProfileSection />
-
-      {/* mobile header */}
-      <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
-        <MobileSection />
-      </Box>
-    </>
+        {/* Responsive sections */}
+        <Stack direction="row" spacing={1} alignItems="center"></Stack>
+      </Toolbar>
+    </AppBar>
   );
 }

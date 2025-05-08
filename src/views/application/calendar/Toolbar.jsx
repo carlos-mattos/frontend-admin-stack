@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 
 // third party
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // assets
 import { IconChevronLeft, IconChevronRight, IconLayoutGrid, IconTemplate, IconLayoutList, IconListNumbers } from '@tabler/icons-react';
@@ -18,23 +19,23 @@ import { useEffect, useState } from 'react';
 // constant
 const viewOptions = [
   {
-    label: 'Month',
+    label: 'Mês',
     value: 'dayGridMonth',
     icon: IconLayoutGrid
   },
   {
-    label: 'Week',
+    label: 'Semana',
     value: 'timeGridWeek',
     icon: IconTemplate
   },
   {
-    label: 'Day',
+    label: 'Dia',
     value: 'timeGridDay',
     icon: IconLayoutList
   },
   {
     label: 'Agenda',
-    value: 'listWeek',
+    value: 'listMonth',
     icon: IconListNumbers
   }
 ];
@@ -55,7 +56,7 @@ export default function Toolbar({ date, view, onClickNext, onClickPrev, onClickT
     <Grid container spacing={3} {...others} sx={{ alignItems: 'center', justifyContent: 'space-between', pb: 3, ...sx }}>
       <Grid>
         <Button variant="outlined" onClick={onClickToday}>
-          Today
+          Hoje
         </Button>
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
@@ -67,7 +68,7 @@ export default function Toolbar({ date, view, onClickNext, onClickPrev, onClickT
             <IconChevronLeft />
           </IconButton>
           <Typography variant="h3" color="textPrimary">
-            {format(date, 'MMMM yyyy')}
+            {format(date, 'MMMM yyyy', { locale: ptBR }).charAt(0).toUpperCase() + format(date, 'MMMM yyyy', { locale: ptBR }).slice(1)}
           </Typography>
           <IconButton onClick={onClickNext} size="small">
             <IconChevronRight />

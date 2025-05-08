@@ -1,237 +1,323 @@
-import { useEffect, useRef, useState } from 'react';
+import { Button, Dialog, useMediaQuery } from '@mui/material';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { format } from 'date-fns';
 
-import useMediaQuery from '@mui/material/useMediaQuery';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-
-// third party
 import FullCalendar from '@fullcalendar/react';
-import listPlugin from '@fullcalendar/list';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import listPlugin from '@fullcalendar/list';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import timelinePlugin from '@fullcalendar/timeline';
-import interactionPlugin from '@fullcalendar/interaction';
 
-// project imports
-import Toolbar from './Toolbar';
 import AddEventForm from './AddEventForm';
+import BlockEventForm from './BlockEventForm';
+import Toolbar from './Toolbar';
 import CalendarStyled from './CalendarStyled';
-
 import Loader from 'ui-component/Loader';
 import MainCard from 'ui-component/cards/MainCard';
 import SubCard from 'ui-component/cards/SubCard';
 
-import { dispatch, useSelector } from 'store';
-import { getEvents, addEvent, updateEvent, removeEvent } from 'store/slices/calendar';
-
-// assets
 import AddAlarmTwoToneIcon from '@mui/icons-material/AddAlarmTwoTone';
+import BlockIcon from '@mui/icons-material/Block';
+import { ptBR } from 'date-fns/locale';
 
-// ==============================|| APPLICATION CALENDAR ||============================== //
+import { appointmentsApi } from 'api';
 
-export default function Calendar() {
-  const calendarRef = useRef(null);
-  const matchSm = useMediaQuery((theme) => theme.breakpoints.down('md'));
+const normalize = (src) => {
+  if (src.start instanceof Date) {
+    return {
+      ...src.extendedProps,
+      startDate: format(src.start, 'yyyy-MM-dd'),
+      startTime: format(src.start, 'HH:mm'),
+      endDate: format(src.end, 'yyyy-MM-dd'),
+      endTime: format(src.end, 'HH:mm')
+    };
+  }
+  return src;
+};
+
+const formatEvent = (event) => {
+  if (!event || !event.startDate || !event.startTime) {
+    return null;
+  }
+
+  try {
+    const startDateTime = new Date(`${event.startDate}T${event.startTime}:00`);
+    const endDateTime = new Date(`${event.endDate}T${event.endTime}:00`);
+
+    const status = event.status || 'Agendado';
+    const firstService = Array.isArray(event.services) && event.services.length ? event.services[0] : event.service;
+
+    return {
+      id: event._id,
+      title: event.title || `${event.customer?.fullName || 'Cliente não definido'} - ${firstService?.name || 'Serviço não definido'}`,
+      start: startDateTime,
+      end: endDateTime,
+      allDay: false,
+      color: event.status,
+      textColor: '#ffffff',
+      customer: event.customer?._id,
+      professional: event.professional?._id,
+      services: event.services?.map((s) => s._id) ?? [],
+      status: event.status,
+      description: event.description || '',
+      classNames: [status.toLowerCase().replace(' ', '')],
+      startDateTime,
+      endDateTime
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
+export default function Calendar({ initialEvents = [], customersList = [], professionalsList = [], servicesList = [] }) {
+  const ref = useRef(null);
+  const sm = useMediaQuery((t) => t.breakpoints.down('md'));
 
   const [loading, setLoading] = useState(true);
-
-  // fetch events data
   const [events, setEvents] = useState([]);
-  const calendarState = useSelector((state) => state.calendar);
+  const [date, setDate] = useState(new Date());
+  const [view, setView] = useState(sm ? 'listWeek' : 'dayGridMonth');
+  const [modal, setModal] = useState({ type: null, event: null, range: null });
 
-  useEffect(() => {
-    dispatch(getEvents()).then(() => setLoading(false));
+  const loadEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await appointmentsApi.list();
+      const formattedEvents = response.data.map(formatEvent).filter(Boolean);
+      setEvents(formattedEvents);
+    } catch (error) {
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    setEvents(calendarState.events);
-  }, [calendarState]);
+    loadEvents();
+  }, [loadEvents]);
 
-  const [date, setDate] = useState(new Date());
-  const [view, setView] = useState(matchSm ? 'listWeek' : 'dayGridMonth');
-
-  // calendar toolbar events
-  const handleDateToday = () => {
-    const calendarEl = calendarRef.current;
-
-    if (calendarEl) {
-      const calendarApi = calendarEl.getApi();
-
-      calendarApi.today();
-      setDate(calendarApi.getDate());
-    }
+  const api = () => ref.current?.getApi();
+  const navigate = (method) => {
+    api()?.[method]();
+    setDate(api()?.getDate());
   };
-
-  const handleViewChange = (newView) => {
-    const calendarEl = calendarRef.current;
-
-    if (calendarEl) {
-      const calendarApi = calendarEl.getApi();
-
-      calendarApi.changeView(newView);
-      setView(newView);
-    }
+  const changeView = (v) => {
+    api()?.changeView(v);
+    setView(v);
   };
+  useEffect(() => changeView(sm ? 'listWeek' : 'dayGridMonth'), [sm]);
 
-  // set calendar view
-  useEffect(() => {
-    handleViewChange(matchSm ? 'listWeek' : 'dayGridMonth');
-  }, [matchSm]);
-
-  const handleDatePrev = () => {
-    const calendarEl = calendarRef.current;
-
-    if (calendarEl) {
-      const calendarApi = calendarEl.getApi();
-
-      calendarApi.prev();
-      setDate(calendarApi.getDate());
-    }
-  };
-
-  const handleDateNext = () => {
-    const calendarEl = calendarRef.current;
-
-    if (calendarEl) {
-      const calendarApi = calendarEl.getApi();
-
-      calendarApi.next();
-      setDate(calendarApi.getDate());
-    }
-  };
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRange, setSelectedRange] = useState(null);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-
-  // calendar event select/add/edit/delete
-  const handleRangeSelect = (arg) => {
-    const calendarEl = calendarRef.current;
-    if (calendarEl) {
-      const calendarApi = calendarEl.getApi();
-      calendarApi.unselect();
-    }
-
-    setSelectedRange({
-      start: arg.start,
-      end: arg.end
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleEventSelect = (arg) => {
-    if (arg.event.id) {
-      const selectEvent = events.find((_event) => _event.id === arg.event.id);
-      setSelectedEvent(selectEvent);
-    } else {
-      setSelectedEvent(null);
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleEventUpdate = async ({ event }) => {
+  const handleCreate = async (raw) => {
     try {
-      dispatch(
-        updateEvent({
-          eventId: event.id,
-          update: {
-            allDay: event.allDay,
-            start: event.start,
-            end: event.end
-          }
-        })
-      );
-    } catch (err) {
-      console.error(err);
+      const data = normalize(raw);
+      const payload = { ...data, timezone: 'America/Sao_Paulo' };
+
+      const availabilityCheck = await appointmentsApi.checkAvailability({
+        professional: payload.professional,
+        startDate: payload.startDate,
+        startTime: payload.startTime,
+        endDate: payload.endDate,
+        endTime: payload.endTime,
+        excludeId: null
+      });
+
+      if (!availabilityCheck.data.available) {
+        throw new Error('Conflito de horário detectado');
+      }
+
+      const response = await appointmentsApi.create({
+        ...payload,
+        schedule: availabilityCheck.data.scheduleId
+      });
+
+      if (response.data) {
+        await loadEvents();
+      }
+    } catch (error) {
+      throw error;
     }
   };
 
-  const handleEventCreate = async (data) => {
-    dispatch(addEvent(data));
-    handleModalClose();
-  };
-
-  const handleUpdateEvent = async (eventId, update) => {
-    dispatch(updateEvent({ eventId, update }));
-    handleModalClose();
-  };
-
-  const handleEventDelete = async (id) => {
+  const handleUpdate = async (id, raw) => {
     try {
-      dispatch(removeEvent(id));
-      handleModalClose();
-    } catch (err) {
-      console.error(err);
+      const data = normalize(raw);
+      const payload = { ...data, timezone: 'America/Sao_Paulo' };
+
+      const availabilityCheck = await appointmentsApi.checkAvailability({
+        professional: payload.professional,
+        startDate: payload.startDate,
+        startTime: payload.startTime,
+        endDate: payload.endDate,
+        endTime: payload.endTime,
+        excludeId: id
+      });
+
+      if (!availabilityCheck.data.available) {
+        throw new Error('Conflito de horário detectado');
+      }
+
+      const response = await appointmentsApi.update(id, {
+        ...payload,
+        schedule: availabilityCheck.data.scheduleId
+      });
+
+      if (response.data) {
+        await loadEvents();
+      }
+    } catch (error) {
+      throw error;
     }
   };
 
-  const handleAddClick = () => {
-    setIsModalOpen(true);
+  const handleStatusUpdate = async (id, status) => {
+    try {
+      await appointmentsApi.updateStatus(id, { status });
+      await loadEvents();
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedEvent(null);
-    setSelectedRange(null);
+  const del = async (id, isPermanent = false) => {
+    try {
+      const event = events.find((e) => e.id === id);
+
+      if (isPermanent) {
+        await appointmentsApi.remove(id);
+        setEvents((e) => e.filter((ev) => ev.id !== id));
+      } else {
+        const payload = {
+          ...event,
+          status: 'Cancelado',
+          startDate: event.startDate,
+          startTime: event.startTime,
+          endDate: event.endDate,
+          endTime: event.endTime
+        };
+
+        await appointmentsApi.update(id, payload);
+        await loadEvents();
+      }
+    } catch (error) {}
+  };
+
+  const openModal = (type, payload = {}) => setModal({ type, ...payload });
+  const closeModal = () => setModal({ type: null, event: null, range: null });
+
+  const onSelectRange = (arg) => {
+    api().unselect();
+    openModal('event', { range: { start: arg.start, end: arg.end } });
+  };
+
+  const onSelectEvent = ({ event }) => {
+    const copy = {
+      id: event.id,
+      title: event.title,
+      ...event.extendedProps,
+      startDateTime: new Date(event.start),
+      endDateTime: new Date(event.end),
+      startDate: event.start.toISOString().split('T')[0],
+      startTime: event.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      endDate: event.end.toISOString().split('T')[0],
+      endTime: event.end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const isBlock = copy.status === 'Bloqueio' || (!copy.customer && (!copy.services || copy.services.length === 0));
+
+    openModal(isBlock ? 'block' : 'event', { event: copy });
   };
 
   if (loading) return <Loader />;
 
   return (
     <MainCard
-      title="Event Calendar"
+      title=" "
       secondary={
-        <Button color="secondary" variant="contained" onClick={handleAddClick}>
-          <AddAlarmTwoToneIcon fontSize="small" sx={{ mr: 0.75 }} />
-          Add New Event
-        </Button>
+        <>
+          <Button variant="contained" color="secondary" onClick={() => openModal('event')} sx={{ mr: 1 }}>
+            <AddAlarmTwoToneIcon fontSize="small" sx={{ mr: 0.75 }} /> Novo
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => openModal('block')}
+            startIcon={<BlockIcon />}
+            sx={{ color: (t) => t.palette.grey[700], borderColor: (t) => t.palette.grey[500] }}
+          >
+            Bloqueio
+          </Button>
+        </>
       }
     >
       <CalendarStyled>
         <Toolbar
           date={date}
           view={view}
-          onClickNext={handleDateNext}
-          onClickPrev={handleDatePrev}
-          onClickToday={handleDateToday}
-          onChangeView={handleViewChange}
+          onClickToday={() => navigate('today')}
+          onClickPrev={() => navigate('prev')}
+          onClickNext={() => navigate('next')}
+          onChangeView={changeView}
         />
         <SubCard>
           <FullCalendar
-            weekends
-            editable
-            droppable
-            selectable
+            ref={ref}
+            plugins={[listPlugin, dayGridPlugin, timelinePlugin, timeGridPlugin, interactionPlugin]}
+            locale={ptBR}
             events={events}
-            ref={calendarRef}
-            rerenderDelay={10}
+            height={sm ? 'auto' : 720}
             initialDate={date}
             initialView={view}
-            dayMaxEventRows={3}
+            selectable
+            editable
+            droppable
             eventDisplay="block"
+            dayMaxEventRows={3}
             headerToolbar={false}
             allDayMaintainDuration
             eventResizableFromStart
-            select={handleRangeSelect}
-            eventDrop={handleEventUpdate}
-            eventClick={handleEventSelect}
-            eventResize={handleEventUpdate}
-            height={matchSm ? 'auto' : 720}
-            plugins={[listPlugin, dayGridPlugin, timelinePlugin, timeGridPlugin, interactionPlugin]}
+            select={onSelectRange}
+            eventClick={onSelectEvent}
+            eventDrop={({ event }) => handleUpdate(event.id, event)}
+            eventResize={({ event }) => handleUpdate(event.id, event)}
+            eventDidMount={({ el, event }) => {
+              const status = event.status?.toLowerCase().replace(' ', '') || 'agendado';
+              el.classList.add(status);
+            }}
+            timeZone="America/Sao_Paulo"
           />
         </SubCard>
       </CalendarStyled>
 
-      {/* Dialog renders its body even if not open */}
-      <Dialog maxWidth="sm" fullWidth onClose={handleModalClose} open={isModalOpen} sx={{ '& .MuiDialog-paper': { p: 0 } }}>
-        {isModalOpen && (
+      <Dialog maxWidth="sm" fullWidth open={!!modal.type} onClose={closeModal} sx={{ '& .MuiDialog-paper': { p: 0 } }}>
+        {modal.type === 'event' && (
           <AddEventForm
-            event={selectedEvent}
-            range={selectedRange}
-            onCancel={handleModalClose}
-            handleDelete={handleEventDelete}
-            handleCreate={handleEventCreate}
-            handleUpdate={handleUpdateEvent}
+            event={modal.event}
+            range={modal.range}
+            handleCreate={handleCreate}
+            handleUpdate={handleUpdate}
+            handleDelete={del}
+            onCancel={closeModal}
+            customersList={customersList}
+            professionalsList={professionalsList}
+            servicesList={servicesList}
+          />
+        )}
+        {modal.type === 'block' && (
+          <BlockEventForm
+            event={modal.event}
+            handleCreate={async (data) => {
+              try {
+                if (modal.event?.id) {
+                  await handleUpdate(modal.event.id, { ...data, status: 'Bloqueio' });
+                } else {
+                  await handleCreate({ ...data, status: 'Bloqueio' });
+                }
+                await loadEvents();
+              } catch (error) {
+                throw error;
+              }
+            }}
+            handleDelete={del}
+            onCancel={closeModal}
           />
         )}
       </Dialog>

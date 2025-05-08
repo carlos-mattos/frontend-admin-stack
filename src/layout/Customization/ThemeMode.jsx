@@ -21,7 +21,7 @@ export default function ThemeModeLayout() {
 
   return (
     <Stack direction="row" spacing={2.5} sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2, width: '100%' }}>
-      <Typography variant="h5">THEME MODE</Typography>
+      <Typography variant="h5">Tema</Typography>
       <RadioGroup row aria-label="layout" value={mode} onChange={(e) => onChangeMode(e.target.value)} name="row-radio-buttons-group">
         <Tooltip title="Light Mode">
           <FormControlLabel

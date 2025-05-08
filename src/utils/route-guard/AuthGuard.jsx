@@ -16,9 +16,12 @@ export default function AuthGuard({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Temporarily disabled for development
+    /*
     if (!isLoggedIn) {
       navigate('login', { replace: true });
     }
+    */
   }, [isLoggedIn, navigate]);
 
   return children;

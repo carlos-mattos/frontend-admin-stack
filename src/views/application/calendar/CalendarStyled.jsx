@@ -1,7 +1,5 @@
-// material-ui
+// CalendarStyled.jsx
 import { styled } from '@mui/material/styles';
-
-// project imports
 import { ThemeMode } from 'config';
 
 const ExperimentalStyled = styled('div')(({ theme }) => ({
@@ -10,7 +8,7 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
     display: 'none'
   },
 
-  // basic style
+  // basic style for FullCalendar
   '& .fc': {
     '--fc-bg-event-opacity': 1,
     '--fc-border-color': theme.palette.divider,
@@ -23,7 +21,7 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
     fontFamily: theme.typography.fontFamily
   },
 
-  // date text
+  // date text styling
   '& .fc .fc-daygrid-day-top': {
     display: 'grid',
     '& .fc-daygrid-day-number': {
@@ -33,7 +31,7 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
     }
   },
 
-  // weekday
+  // weekday header
   '& .fc .fc-col-header-cell': {
     backgroundColor: theme.palette.mode === ThemeMode.DARK ? theme.palette.dark.main : theme.palette.grey[50]
   },
@@ -46,7 +44,7 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
     overflowX: 'auto'
   },
 
-  // events
+  // events margins and border radius
   '& .fc-direction-ltr .fc-daygrid-event.fc-event-end, .fc-direction-rtl .fc-daygrid-event.fc-event-start': {
     marginLeft: 4,
     marginBottom: 6,
@@ -96,6 +94,41 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
   '& .fc-timegrid-event-harness-inset .fc-timegrid-event, .fc-timegrid-event.fc-event-mirror, .fc-timegrid-more-link': {
     padding: 8,
     margin: 2
+  },
+
+  '.agendado': {
+    backgroundColor: '#2196f3',
+    '& .fc-event-title': {
+      color: '#ffffff'
+    }
+  },
+
+  '.preagendado': {
+    backgroundColor: '#8c8c8c',
+    '& .fc-event-title': {
+      color: '#ffffff'
+    }
+  },
+
+  '.cancelado': {
+    backgroundColor: '#f44336',
+    '& .fc-event-title': {
+      color: '#ffffff',
+      textDecoration: 'line-through'
+    }
+  },
+
+  '.bloqueio': {
+    backgroundColor: '#faad14',
+    '& .fc-event-title': {
+      color: '#ffffff'
+    }
+  },
+
+  '& .fc-list-event': {
+    '&:hover': {
+      backgroundColor: theme.palette.mode === ThemeMode.DARK ? theme.palette.dark[800] : theme.palette.grey[100]
+    }
   }
 }));
 
