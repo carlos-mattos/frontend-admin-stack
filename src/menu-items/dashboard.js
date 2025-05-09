@@ -6,7 +6,9 @@ import {
   IconDashboard,
   IconDeviceAnalytics,
   IconFileInvoice,
-  IconLifebuoy
+  IconLifebuoy,
+  IconCash,
+
 } from '@tabler/icons-react';
 
 const icons = {
@@ -14,14 +16,16 @@ const icons = {
   IconDeviceAnalytics: IconDeviceAnalytics,
   IconFileInvoice: IconFileInvoice,
   IconArticle: IconArticle,
-  IconLifebuoy: IconLifebuoy
+  IconLifebuoy: IconLifebuoy,
+  IconCash: IconCash,
+  
 };
 
 // ==============================|| MENU ITEMS - DASHBOARD ||============================== //
 
 const dashboard = {
   id: 'dashboard',
-  title: '',
+  title: 'Dashboard',
   icon: icons.IconDashboard,
   type: 'group',
   children: [
@@ -43,21 +47,57 @@ const dashboard = {
           id: 'customers',
           title: 'Clientes',
           type: 'item',
-          url: '/apps/clientes',
+          url: '/customers',
           breadcrumbs: false
         },
         {
           id: 'professionals',
           title: 'Profissionais',
           type: 'item',
-          url: '/apps/profissionais',
+          url: '/professionals',
           breadcrumbs: false
         },
         {
           id: 'services',
           title: 'Serviços',
           type: 'item',
-          url: '/apps/servicos',
+          url: '/services',
+          breadcrumbs: false
+        }
+      ]
+    },
+    {
+      id: 'financial',
+      title: 'Financeiro',
+      type: 'collapse',
+      icon: IconCash,
+      children: [
+        {
+          id: 'contas-receber',
+          title: 'Contas a Receber',
+          type: 'item',
+          url: '/accounts-receivable',
+          breadcrumbs: false
+        },
+        {
+          id: 'contas-pagar',
+          title: 'Contas a Pagar',
+          type: 'item',
+          url: '/accounts-payable',
+          breadcrumbs: false
+        },
+        {
+          id: 'fluxo-caixa',
+          title: 'Fluxo de Caixa',
+          type: 'item',
+          url: '/cash-flow-report',
+          breadcrumbs: false
+        },
+        {
+          id: 'payment-methods',
+          title: 'Métodos de Pagamento',
+          type: 'item',
+          url: '/payment-methods',
           breadcrumbs: false
         }
       ]
@@ -66,7 +106,7 @@ const dashboard = {
       id: 'calendar',
       title: 'Calendário',
       type: 'item',
-      url: '/apps/calendario',
+      url: '/calendar',
       icon: IconCalendar,
       breadcrumbs: false
     }

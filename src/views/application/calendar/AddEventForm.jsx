@@ -32,6 +32,7 @@ import { useCallback, useMemo } from 'react';
 
 import { customersApi, professionalsApi } from 'api';
 import { gridSpacing } from 'store/constant';
+import { useAppointmentsFinance } from 'hooks/useAppointmentsFinance';
 
 const BASE_EVENT = {
   title: '',
@@ -96,6 +97,8 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
   const [isDeleting, setIsDeleting] = useState(false);
   const [conflictError, setConflictError] = useState(null);
 
+  const { handleAppointmentCreate, handleAppointmentUpdate } = useAppointmentsFinance();
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -157,9 +160,13 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
           console.log('Sending payload:', payload);
 
           if (event?.id) {
-            await handleUpdate(event.id, payload);
+            // Update existing appointment with financial tracking
+            const updatedAppointment = await handleAppointmentUpdate(event.id, payload);
+            await handleUpdate(event.id, updatedAppointment);
           } else {
-            await handleCreate(payload);
+            // Create new appointment with financial tracking
+            const newAppointment = await handleAppointmentCreate(payload);
+            await handleCreate(newAppointment);
           }
           onCancel();
         } catch (error) {
@@ -169,7 +176,7 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
           helpers.setSubmitting(false);
         }
       },
-      [event, handleCreate, handleUpdate, onCancel, isDeleting, isReadOnly]
+      [event, handleCreate, handleUpdate, onCancel, isDeleting, isReadOnly, handleAppointmentCreate, handleAppointmentUpdate]
     )
   });
 

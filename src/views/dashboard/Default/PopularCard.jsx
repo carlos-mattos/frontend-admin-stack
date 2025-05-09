@@ -50,13 +50,16 @@ export default function PopularCard({ isLoading }) {
                     <Typography variant="h4">Popular Stocks</Typography>
                   </Grid>
                   <Grid>
-                    <IconButton size="small" sx={{ mt: -0.625 }}>
+                    <IconButton 
+                      size="small" 
+                      sx={{ mt: -0.625 }}
+                      aria-controls="menu-popular-card"
+                      aria-haspopup="true"
+                      onClick={handleClick}
+                    >
                       <MoreHorizOutlinedIcon
                         fontSize="small"
                         sx={{ cursor: 'pointer' }}
-                        aria-controls="menu-popular-card"
-                        aria-haspopup="true"
-                        onClick={handleClick}
                       />
                     </IconButton>
                     <Menu
