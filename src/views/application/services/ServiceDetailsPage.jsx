@@ -44,7 +44,7 @@ export default function ServiceDetailsPage() {
       <MainCard>
         <Stack spacing={2}>
           <Alert severity="error">{error}</Alert>
-          <Button variant="contained" onClick={() => navigate('/apps/servicos')}>
+          <Button variant="contained" onClick={() => navigate('/services')}>
             Voltar para Lista
           </Button>
         </Stack>
@@ -56,7 +56,7 @@ export default function ServiceDetailsPage() {
     <MainCard>
       <Stack spacing={2}>
         <Stack direction="row" alignItems="center" spacing={2}>
-          <Button variant="text" onClick={() => navigate('/apps/servicos')}>
+          <Button variant="text" onClick={() => navigate('/services')}>
             ← Voltar
           </Button>
           <Typography variant="h2">Detalhes do Serviço</Typography>

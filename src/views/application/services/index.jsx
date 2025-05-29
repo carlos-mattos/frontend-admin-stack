@@ -310,7 +310,7 @@ export default function Servicos() {
 
   const handleDetails = () => {
     setMenuAnchor(null);
-    selectedService?._id && navigate(`/apps/servicos/detalhes/${selectedService._id}`);
+    selectedService?._id && navigate(`/services/${selectedService._id}`);
   };
 
   const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredRows.length) : 0;

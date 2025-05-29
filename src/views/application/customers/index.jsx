@@ -258,7 +258,7 @@ export default function Clientes() {
 
   const handleDetails = () => {
     setMenuAnchor(null);
-    selectedRow?._id && navigate(`/apps/clientes/detalhes/${selectedRow._id}`);
+    selectedRow?._id && navigate(`/customers/${selectedRow._id}`);
   };
 
   const handleCloseEditDialog = () => {

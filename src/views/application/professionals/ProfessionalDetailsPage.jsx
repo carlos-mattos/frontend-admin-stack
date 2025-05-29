@@ -47,7 +47,7 @@ export default function ProfessionalDetailsPage() {
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
-          <Button variant="contained" onClick={() => navigate('/apps/profissionais')}>
+          <Button variant="contained" onClick={() => navigate('/professionals')}>
             Voltar para lista
           </Button>
         </Box>
@@ -62,7 +62,7 @@ export default function ProfessionalDetailsPage() {
           <Alert severity="warning" sx={{ mb: 2 }}>
             Profissional não encontrado
           </Alert>
-          <Button variant="contained" onClick={() => navigate('/apps/profissionais')}>
+          <Button variant="contained" onClick={() => navigate('/professionals')}>
             Voltar para lista
           </Button>
         </Box>
@@ -74,7 +74,7 @@ export default function ProfessionalDetailsPage() {
     <MainCard
       title={
         <Stack direction="row" spacing={2} alignItems="center">
-          <Button startIcon={<ArrowBack />} variant="text" onClick={() => navigate('/apps/profissionais')} sx={{ mr: 2 }}>
+          <Button startIcon={<ArrowBack />} variant="text" onClick={() => navigate('/professionals')} sx={{ mr: 2 }}>
             Voltar
           </Button>
           <Typography variant="h4">Detalhes do Profissional</Typography>

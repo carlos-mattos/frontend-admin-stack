@@ -5,6 +5,7 @@ import MainLayout from 'layout/MainLayout';
 import Loadable from 'ui-component/Loadable';
 import AuthGuard from 'utils/route-guard/AuthGuard';
 
+// Lazy loaded components
 const DashboardDefault = Loadable(lazy(() => import('views/dashboard/Default')));
 const AppClientes = Loadable(lazy(() => import('views/application/customers')));
 const AppCustomerDetails = Loadable(lazy(() => import('views/application/customers/ClienteDetailsPage')));

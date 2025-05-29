@@ -96,21 +96,21 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
     margin: 2
   },
 
-  '.agendado': {
+  '.scheduled': {
     backgroundColor: '#2196f3',
     '& .fc-event-title': {
       color: '#ffffff'
     }
   },
 
-  '.preagendado': {
+  '.pre-scheduled': {
     backgroundColor: '#8c8c8c',
     '& .fc-event-title': {
       color: '#ffffff'
     }
   },
 
-  '.cancelado': {
+  '.cancelled': {
     backgroundColor: '#f44336',
     '& .fc-event-title': {
       color: '#ffffff',
@@ -118,7 +118,7 @@ const ExperimentalStyled = styled('div')(({ theme }) => ({
     }
   },
 
-  '.bloqueio': {
+  '.blocked': {
     backgroundColor: '#faad14',
     '& .fc-event-title': {
       color: '#ffffff'

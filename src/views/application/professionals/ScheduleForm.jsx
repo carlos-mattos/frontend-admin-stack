@@ -48,7 +48,6 @@ export default function ScheduleForm() {
     startTime: '',
     endTime: '',
     timezone: 'America/Sao_Paulo',
-    status: 'scheduled',
     recurrence: 'none',
     repeatUntil: '',
     customRecurrenceDays: []
@@ -117,7 +116,7 @@ export default function ScheduleForm() {
         await schedulesApi.create(payload);
       }
 
-      navigate(`/apps/profissionais/${id}/agenda`);
+      navigate(`/professionals/${id}/schedule`);
     } catch (err) {
       setError(err.response?.data?.message || 'Erro ao salvar horário');
     } finally {
@@ -129,7 +128,7 @@ export default function ScheduleForm() {
     <MainCard title={scheduleId ? 'Editar Horário' : 'Novo Horário'}>
       <CardContent>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate(`/apps/profissionais/${id}/agenda`)}>
+          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate(`/professionals/${id}/schedule`)}>
             Voltar
           </Button>
         </Stack>
@@ -238,7 +237,7 @@ export default function ScheduleForm() {
             <Button
               variant="outlined"
               startIcon={<CancelIcon />}
-              onClick={() => navigate(`/apps/profissionais/${id}/agenda`)}
+              onClick={() => navigate(`/professionals/${id}/schedule`)}
               disabled={loading}
             >
               Cancelar

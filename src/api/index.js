@@ -43,4 +43,8 @@ export const appointmentsApi = {
   checkAvailability: (payload) => api.post('/appointments/check-availability', payload)
 };
 
+export const appointmentsFinanceApi = {
+  create: (payload) => api.post('/appointments/finance', payload)
+};
+
 export default api;

@@ -28,7 +28,7 @@ export default function ClientDetails({ clientData }) {
 
   return (
     <Grid container spacing={gridSpacing}>
-      <Grid item size={12}>
+      <Grid item xs={12}>
         <SubCard title="Informações Pessoais">
           <Stack spacing={2} mt={2}>
             <Stack direction="row" spacing={2} alignItems="center">
@@ -62,7 +62,7 @@ export default function ClientDetails({ clientData }) {
         </SubCard>
       </Grid>
 
-      <Grid item size={12}>
+      <Grid item xs={12}>
         <SubCard title="Endereço">
           <Stack spacing={2} mt={2}>
             <Typography variant="body1">{clientData.address || 'Não informado'}</Typography>
@@ -70,7 +70,7 @@ export default function ClientDetails({ clientData }) {
         </SubCard>
       </Grid>
 
-      <Grid item size={12}>
+      <Grid item xs={12}>
         <SubCard title="Preferências">
           <Stack spacing={2} mt={2}>
             <Stack direction="row" spacing={2} alignItems="center">

@@ -1,57 +1,21 @@
 import { useState, useCallback } from 'react';
-import { appointmentsApi } from 'api';
+import { appointmentsApi, appointmentsFinanceApi } from 'api';
+import { AppointmentStatus, PaymentStatus } from '../views/application/calendar/AppointmentStatus';
 
 export const useAppointmentsFinance = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const shouldTrackFinance = useCallback((appointmentData) => {
-    return appointmentData.status !== 'Bloqueio';
-  }, []);
-
-  const createExpectedRevenue = useCallback(async (appointmentId, amount) => {
-    try {
-      setLoading(true);
-      const response = await appointmentsApi.updateStatus(appointmentId, {
-        finance: {
-          amount,
-          status: 'expected'
-        }
-      });
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateToPending = useCallback(async (appointmentId) => {
-    try {
-      setLoading(true);
-      const response = await appointmentsApi.updateStatus(appointmentId, {
-        finance: {
-          status: 'pending'
-        }
-      });
-      return response.data;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    return appointmentData.status !== AppointmentStatus.BLOCKED;
   }, []);
 
   const registerPayment = useCallback(async (appointmentId, method) => {
     try {
       setLoading(true);
-      const response = await appointmentsApi.updateStatus(appointmentId, {
-        finance: {
-          status: 'paid',
-          method
-        }
+      const response = await appointmentsApi.update(appointmentId, {
+        paymentStatus: PaymentStatus.PAID,
+        paymentMethodId: method
       });
       return response.data;
     } catch (err) {
@@ -66,18 +30,35 @@ export const useAppointmentsFinance = () => {
     async (appointmentData) => {
       try {
         setLoading(true);
-        // Create appointment with initial finance status if not a block
-        const createData = { ...appointmentData };
 
         if (shouldTrackFinance(appointmentData)) {
-          createData.finance = {
-            amount: appointmentData.services.reduce((total, service) => total + (service.price || 0), 0),
-            status: 'expected'
-          };
-        }
+          const servicesArray = Array.isArray(appointmentData.services)
+            ? appointmentData.services.map((s) => (typeof s === 'string' ? s : s.id))
+            : [];
 
-        const appointment = await appointmentsApi.create(createData);
-        return appointment.data;
+          const financePayload = {
+            title: appointmentData.title,
+            description: appointmentData.description,
+            customer: appointmentData.customer,
+            professional: appointmentData.professional,
+            services: servicesArray,
+            startDate: appointmentData.startDate,
+            startTime: appointmentData.startTime,
+            endDate: appointmentData.endDate,
+            endTime: appointmentData.endTime,
+            status: appointmentData.status,
+            timezone: appointmentData.timezone,
+            amount: appointmentData.amount,
+            dueDate: appointmentData.dueDate || new Date(`${appointmentData.startDate}T${appointmentData.startTime}`),
+            paymentMethodId: appointmentData.paymentMethodId,
+            notes: appointmentData.notes
+          };
+          const response = await appointmentsFinanceApi.create(financePayload);
+          return response.data;
+        } else {
+          const response = await appointmentsApi.create(appointmentData);
+          return response.data;
+        }
       } catch (err) {
         setError(err.message);
         throw err;
@@ -88,68 +69,29 @@ export const useAppointmentsFinance = () => {
     [shouldTrackFinance]
   );
 
-  const handleAppointmentUpdate = useCallback(
-    async (appointmentId, appointmentData) => {
-      try {
-        setLoading(true);
-        // Update appointment and finance if services changed and not a block
-        const updateData = { ...appointmentData };
-
-        if (shouldTrackFinance(appointmentData) && appointmentData.services) {
-          updateData.finance = {
-            amount: appointmentData.services.reduce((total, service) => total + (service.price || 0), 0),
-            status: 'expected'
-          };
-        }
-
-        const appointment = await appointmentsApi.update(appointmentId, updateData);
-        return appointment.data;
-      } catch (err) {
-        setError(err.message);
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [shouldTrackFinance]
-  );
-
-  const handleAppointmentComplete = useCallback(
-    async (appointmentId, appointmentData) => {
-      try {
-        setLoading(true);
-        // Update appointment status and finance to pending if not a block
-        const updateData = {
-          status: 'Concluído'
-        };
-
-        if (shouldTrackFinance(appointmentData)) {
-          updateData.finance = {
-            status: 'pending'
-          };
-        }
-
-        const appointment = await appointmentsApi.updateStatus(appointmentId, updateData);
-        return appointment.data;
-      } catch (err) {
-        setError(err.message);
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [shouldTrackFinance]
-  );
+  const handleAppointmentUpdate = useCallback(async (appointmentId, appointmentData) => {
+    try {
+      setLoading(true);
+      const minimalPayload = {
+        title: appointmentData.title,
+        description: appointmentData.description
+      };
+      const response = await appointmentsApi.update(appointmentId, minimalPayload);
+      return response.data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     loading,
     error,
-    createExpectedRevenue,
-    updateToPending,
     registerPayment,
     handleAppointmentCreate,
     handleAppointmentUpdate,
-    handleAppointmentComplete,
     shouldTrackFinance
   };
 };

@@ -47,7 +47,7 @@ export default function ClienteDetailsPage() {
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
-          <Button variant="contained" onClick={() => navigate('/apps/clientes')}>
+          <Button variant="contained" onClick={() => navigate('/customers')}>
             Voltar para lista
           </Button>
         </Box>
@@ -62,7 +62,7 @@ export default function ClienteDetailsPage() {
           <Alert severity="warning" sx={{ mb: 2 }}>
             Cliente não encontrado
           </Alert>
-          <Button variant="contained" onClick={() => navigate('/apps/clientes')}>
+          <Button variant="contained" onClick={() => navigate('/customers')}>
             Voltar para lista
           </Button>
         </Box>
@@ -74,7 +74,7 @@ export default function ClienteDetailsPage() {
     <MainCard
       title={
         <Stack direction="row" spacing={2} alignItems="center">
-          <Button startIcon={<ArrowBack />} variant="text" onClick={() => navigate('/apps/clientes')} sx={{ mr: 2 }}>
+          <Button startIcon={<ArrowBack />} variant="text" onClick={() => navigate('/customers')} sx={{ mr: 2 }}>
             Voltar
           </Button>
           <Typography variant="h4">Detalhes do Cliente</Typography>
