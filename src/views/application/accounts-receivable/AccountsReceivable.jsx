@@ -31,6 +31,7 @@ import 'dayjs/locale/pt-br';
 import { useEffect, useState } from 'react';
 import { accountsReceivableApi, appointmentsApi, customersApi, paymentMethodsApi, servicesApi } from '../../../api/index';
 import { formatCurrency } from '../../../utils/format';
+import Typography from '@mui/material/Typography';
 
 dayjs.locale('pt-br');
 
@@ -55,53 +56,57 @@ const AccountsReceivable = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  const processReceivables = async (receivables) => {
+    return await Promise.all(
+      receivables.map(async (item) => {
+        let clientName = '-';
+        let serviceName = '-';
+        if (item.appointmentId) {
+          try {
+            const appointmentRes = await appointmentsApi.get(item.appointmentId);
+            clientName = appointmentRes.data.customerId.fullName || '-';
+            if (appointmentRes.data.serviceIds && Array.isArray(appointmentRes.data.serviceIds)) {
+              const serviceNames = await Promise.all(
+                appointmentRes.data.serviceIds.map(async (serviceId) => {
+                  try {
+                    const serviceRes = await servicesApi.get(serviceId);
+                    return serviceRes.data.name || '-';
+                  } catch {
+                    return '-';
+                  }
+                })
+              );
+              serviceName = serviceNames.join(', ');
+            } else if (appointmentRes.data.service && appointmentRes.data.service.name) {
+              serviceName = appointmentRes.data.service.name;
+            } else if (appointmentRes.data.services && Array.isArray(appointmentRes.data.services)) {
+              serviceName = appointmentRes.data.services.map((s) => s.name).join(', ');
+            }
+          } catch {}
+        }
+        if (item.customerId) {
+          const customerRes = await customersApi.get(item.customerId);
+          clientName = customerRes.data.fullName || '-';
+        }
+        return {
+          _id: item._id,
+          client: clientName,
+          service: serviceName,
+          date: item.dueDate ? dayjs(item.dueDate, 'YYYY-MM-DD') : null,
+          value: item.amount,
+          status: item.status || '-',
+          paymentMethod: item.paymentMethodId || item.paymentMethod || ''
+        };
+      })
+    );
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await accountsReceivableApi.list();
         const receivables = response.data;
-        const data = await Promise.all(
-          receivables.map(async (item) => {
-            let clientName = '-';
-            let serviceName = '-';
-            if (item.appointmentId) {
-              try {
-                const appointmentRes = await appointmentsApi.get(item.appointmentId);
-                clientName = appointmentRes.data.customerId.fullName || '-';
-                if (appointmentRes.data.serviceIds && Array.isArray(appointmentRes.data.serviceIds)) {
-                  const serviceNames = await Promise.all(
-                    appointmentRes.data.serviceIds.map(async (serviceId) => {
-                      try {
-                        const serviceRes = await servicesApi.get(serviceId);
-                        return serviceRes.data.name || '-';
-                      } catch {
-                        return '-';
-                      }
-                    })
-                  );
-                  serviceName = serviceNames.join(', ');
-                } else if (appointmentRes.data.service && appointmentRes.data.service.name) {
-                  serviceName = appointmentRes.data.service.name;
-                } else if (appointmentRes.data.services && Array.isArray(appointmentRes.data.services)) {
-                  serviceName = appointmentRes.data.services.map((s) => s.name).join(', ');
-                }
-              } catch {}
-            }
-            if (item.customerId) {
-              const customerRes = await customersApi.get(item.customerId);
-              clientName = customerRes.data.fullName || '-';
-            }
-            return {
-              _id: item._id,
-              client: clientName,
-              service: serviceName,
-              date: dayjs(item.dueDate),
-              value: item.amount,
-              status: item.status || '-',
-              paymentMethod: item.paymentMethodId || item.paymentMethod || ''
-            };
-          })
-        );
+        const data = await processReceivables(receivables);
         setReceivables(data);
         const paymentMethodsRes = await paymentMethodsApi.list();
         setPaymentMethods(paymentMethodsRes.data);
@@ -236,19 +241,13 @@ const AccountsReceivable = () => {
     try {
       await accountsReceivableApi.create({
         ...formData,
-        dueDate: formData.dueDate.format('YYYY-MM-DD'),
-        amount: Number(formData.amount),
-        customerId: formData.customerId
+        dueDate: formData.dueDate ? formData.dueDate.format('YYYY-MM-DD') : null,
+        amount: formData.amount ? Number(formData.amount) : null,
+        customerId: formData.customerId ? formData.customerId : null
       });
-    
+
       const response = await accountsReceivableApi.list();
-      const receivablesData = response.data.map((item) => ({
-        ...item,
-        date: dayjs(item.dueDate),
-        value: item.amount,
-        status: item.status || '-',
-        paymentMethod: item.paymentMethodId || item.paymentMethod || ''
-      }));
+      const receivablesData = await processReceivables(response.data);
       setReceivables(receivablesData);
       handleCloseForm();
     } catch (err) {
@@ -307,7 +306,7 @@ const AccountsReceivable = () => {
                   <TableRow>
                     <TableCell>Cliente</TableCell>
                     <TableCell>Serviço</TableCell>
-                    <TableCell>Data</TableCell>
+                    <TableCell>Vencimento</TableCell>
                     <TableCell>Valor</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Forma de Pagamento</TableCell>
@@ -327,7 +326,26 @@ const AccountsReceivable = () => {
                       ) : (
                         <TableCell>{receivable.service}</TableCell>
                       )}
-                      <TableCell>{receivable.date.format('DD/MM/YYYY')}</TableCell>
+                      <TableCell>
+                        <DatePicker
+                          value={receivable.date}
+                          onChange={async (newValue) => {
+                            if (!newValue) return;
+                            await accountsReceivableApi.update(receivable._id, { dueDate: newValue.format('YYYY-MM-DD') });
+                            setReceivables((prev) =>
+                              prev.map((item) => (item._id === receivable._id ? { ...item, date: newValue } : item))
+                            );
+                          }}
+                          format="DD/MM/YYYY"
+                          slotProps={{
+                            textField: {
+                              size: 'small',
+                              variant: 'standard',
+                              sx: { minWidth: 0, maxWidth: 120, p: 0 }
+                            }
+                          }}
+                        />
+                      </TableCell>
                       <TableCell>{formatCurrency(receivable.value)}</TableCell>
                       <TableCell>
                         <Chip label={getStatusLabel(receivable)} color={getStatusColor(receivable)} size="small" />

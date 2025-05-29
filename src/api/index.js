@@ -53,4 +53,8 @@ export const paymentMethodsApi = buildCRUD('/payment-methods');
 
 export const accountsPayableApi = buildCRUD('/accounts-payable');
 
+export const cashFlowReportApi = {
+  get: (filters = {}) => api.get('/cash-flow-report', { params: filters })
+};
+
 export default api;

@@ -11,7 +11,8 @@ import {
   TableHead,
   TableRow,
   Button,
-  Stack
+  Stack,
+  Paper
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -19,61 +20,45 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+import quarterOfYear from 'dayjs/plugin/quarterOfYear';
+dayjs.extend(quarterOfYear);
 import * as XLSX from 'xlsx';
 import { generateCashFlowPDF } from '../../../utils/pdfGenerator';
-
-dayjs.locale('pt-br');
+import { cashFlowReportApi } from '../../../api';
 
 const CashFlowReport = () => {
-  const [startDate, setStartDate] = useState(dayjs().startOf('month'));
-  const [endDate, setEndDate] = useState(dayjs().endOf('month'));
+  const [startDate, setStartDate] = useState(dayjs().quarter(dayjs().quarter()).startOf('quarter'));
+  const [endDate, setEndDate] = useState(dayjs().quarter(dayjs().quarter()).endOf('quarter'));
   const [cashFlowData, setCashFlowData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
+  const [summary, setSummary] = useState({ totalInflow: 0, totalOutflow: 0, netBalance: 0 });
 
-  // Mock data - Replace with actual API calls
+  const saldoColor = summary.netBalance > 0 ? 'success.main' : summary.netBalance < 0 ? 'error.main' : 'text.primary';
+
   useEffect(() => {
-    // Simulando dados de contas a receber e pagar
-    const mockReceivables = [
-      { date: dayjs('2024-03-01'), value: 1500 },
-      { date: dayjs('2024-03-15'), value: 2500 },
-      { date: dayjs('2024-03-20'), value: 1800 }
-    ];
+    const fetchData = async () => {
+      try {
+        const res = await cashFlowReportApi.get({
+          startDate: startDate ? startDate.format('YYYY-MM-DD') : undefined,
+          endDate: endDate ? endDate.format('YYYY-MM-DD') : undefined
+        });
 
-    const mockPayables = [
-      { date: dayjs('2024-03-05'), value: 800 },
-      { date: dayjs('2024-03-10'), value: 1200 },
-      { date: dayjs('2024-03-25'), value: 2500 }
-    ];
-
-    // Combinando e processando os dados
-    const allTransactions = [
-      ...mockReceivables.map((t) => ({ ...t, type: 'in' })),
-      ...mockPayables.map((t) => ({ ...t, type: 'out' }))
-    ].filter((t) => t.date.isAfter(startDate) && t.date.isBefore(endDate));
-
-    // Agrupando por mês para o gráfico
-    const monthlyFlow = {};
-    allTransactions.forEach((transaction) => {
-      const monthKey = transaction.date.format('YYYY-MM');
-      if (!monthlyFlow[monthKey]) {
-        monthlyFlow[monthKey] = { in: 0, out: 0 };
+        setSummary(res.data.summary || { totalInflow: 0, totalOutflow: 0, netBalance: 0 });
+        const apiData = (res.data.monthly || []).map((item) => ({
+          month: dayjs(item.month, 'YYYY-MM').format('MMM/YYYY'),
+          inflow: item.inflow,
+          outflow: item.outflow,
+          balance: item.balance
+        }));
+        setCashFlowData(apiData);
+        setMonthlyData(apiData);
+      } catch (err) {
+        setSummary({ totalInflow: 0, totalOutflow: 0, netBalance: 0 });
+        setCashFlowData([]);
+        setMonthlyData([]);
       }
-      if (transaction.type === 'in') {
-        monthlyFlow[monthKey].in += transaction.value;
-      } else {
-        monthlyFlow[monthKey].out += transaction.value;
-      }
-    });
-
-    const chartData = Object.entries(monthlyFlow).map(([month, data]) => ({
-      month: dayjs(month).format('MMM/YYYY'),
-      entradas: data.in,
-      saidas: data.out,
-      saldo: data.in - data.out
-    }));
-
-    setCashFlowData(chartData);
-    setMonthlyData(chartData);
+    };
+    fetchData();
   }, [startDate, endDate]);
 
   const handleExportExcel = () => {
@@ -84,8 +69,24 @@ const CashFlowReport = () => {
   };
 
   const handleExportPDF = () => {
+    console.log({
+      data: monthlyData.map((row) => ({
+        ...row,
+        inflow: Number(row.inflow) || 0,
+        outflow: Number(row.outflow) || 0,
+        balance: Number(row.balance) || 0
+      })),
+      startDate: startDate.format('DD/MM/YYYY'),
+      endDate: endDate.format('DD/MM/YYYY')
+    });
+
     generateCashFlowPDF({
-      data: monthlyData,
+      data: monthlyData.map((row) => ({
+        ...row,
+        inflow: Number(row.inflow) || 0,
+        outflow: Number(row.outflow) || 0,
+        balance: Number(row.balance) || 0
+      })),
       startDate: startDate.format('DD/MM/YYYY'),
       endDate: endDate.format('DD/MM/YYYY')
     });
@@ -95,32 +96,34 @@ const CashFlowReport = () => {
     <Box>
       <Card sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={3} alignItems="center">
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 label="Data Inicial"
                 value={startDate}
                 onChange={(newValue) => setStartDate(newValue)}
                 slotProps={{ textField: { fullWidth: true } }}
+                format="DD/MM/YYYY"
               />
             </LocalizationProvider>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 label="Data Final"
                 value={endDate}
                 onChange={(newValue) => setEndDate(newValue)}
                 slotProps={{ textField: { fullWidth: true } }}
+                format="DD/MM/YYYY"
               />
             </LocalizationProvider>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center">
             <Stack direction="row" spacing={2}>
-              <Button variant="contained" color="primary" onClick={handleExportExcel} fullWidth>
+              <Button variant="contained" color="primary" onClick={handleExportExcel}>
                 Exportar Excel
               </Button>
-              <Button variant="contained" color="primary" onClick={handleExportPDF} fullWidth>
+              <Button variant="contained" color="primary" onClick={handleExportPDF}>
                 Exportar PDF
               </Button>
             </Stack>
@@ -128,9 +131,42 @@ const CashFlowReport = () => {
         </Grid>
       </Card>
 
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={3} sx={{ p: 3, textAlign: 'center', bgcolor: 'success.lighter' }}>
+            <Typography variant="subtitle2" color="success.main">
+              Entradas
+            </Typography>
+            <Typography variant="h5" color="success.main" fontWeight={700}>
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalInflow)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={3} sx={{ p: 3, textAlign: 'center', bgcolor: 'error.lighter' }}>
+            <Typography variant="subtitle2" color="error.main">
+              Saídas
+            </Typography>
+            <Typography variant="h5" color="error.main" fontWeight={700}>
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalOutflow)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper elevation={3} sx={{ p: 3, textAlign: 'center', bgcolor: 'grey.100' }}>
+            <Typography variant="subtitle2" color={saldoColor}>
+              Saldo
+            </Typography>
+            <Typography variant="h5" color={saldoColor} fontWeight={700}>
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.netBalance)}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Card sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" sx={{ mb: 3 }}>
-          Gráfico de Entradas vs Saídas
+          Evolução Mensal
         </Typography>
         <Box sx={{ width: '100%', height: 400 }}>
           <ResponsiveContainer>
@@ -140,9 +176,9 @@ const CashFlowReport = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="entradas" stroke="#4CAF50" name="Entradas" />
-              <Line type="monotone" dataKey="saidas" stroke="#F44336" name="Saídas" />
-              <Line type="monotone" dataKey="saldo" stroke="#2196F3" name="Saldo" />
+              <Line type="monotone" dataKey="inflow" stroke="#4CAF50" name="Entradas" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="outflow" stroke="#F44336" name="Saídas" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="balance" stroke="#2196F3" name="Saldo" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </Box>
@@ -167,22 +203,41 @@ const CashFlowReport = () => {
                     {new Intl.NumberFormat('pt-BR', {
                       style: 'currency',
                       currency: 'BRL'
-                    }).format(row.entradas)}
+                    }).format(row.inflow)}
                   </TableCell>
                   <TableCell align="right">
                     {new Intl.NumberFormat('pt-BR', {
                       style: 'currency',
                       currency: 'BRL'
-                    }).format(row.saidas)}
+                    }).format(row.outflow)}
                   </TableCell>
                   <TableCell align="right">
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(row.saldo)}
+                    <b style={{ color: row.balance > 0 ? '#388e3c' : row.balance < 0 ? '#d32f2f' : undefined }}>
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(row.balance)}
+                    </b>
                   </TableCell>
                 </TableRow>
               ))}
+
+              <TableRow>
+                <TableCell>
+                  <b>Total</b>
+                </TableCell>
+                <TableCell align="right">
+                  <b>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalInflow)}</b>
+                </TableCell>
+                <TableCell align="right">
+                  <b>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalOutflow)}</b>
+                </TableCell>
+                <TableCell align="right">
+                  <b style={{ color: saldoColor }}>
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.netBalance)}
+                  </b>
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </TableContainer>

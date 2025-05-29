@@ -54,9 +54,9 @@ export const generateReceipt = async (data) => {
 export const generateCashFlowPDF = async ({ data, startDate, endDate }) => {
   const tableBody = data.map((row) => [
     row.month,
-    { text: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.entradas), alignment: 'right' },
-    { text: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.saidas), alignment: 'right' },
-    { text: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.saldo), alignment: 'right' }
+    { text: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.inflow), alignment: 'right' },
+    { text: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.outflow), alignment: 'right' },
+    { text: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(row.balance), alignment: 'right' }
   ]);
 
   const docDefinition = {
