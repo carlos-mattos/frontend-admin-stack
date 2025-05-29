@@ -51,4 +51,6 @@ export const accountsReceivableApi = buildCRUD('/accounts-receivable');
 
 export const paymentMethodsApi = buildCRUD('/payment-methods');
 
+export const accountsPayableApi = buildCRUD('/accounts-payable');
+
 export default api;
