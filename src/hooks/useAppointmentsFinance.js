@@ -47,11 +47,7 @@ export const useAppointmentsFinance = () => {
             endDate: appointmentData.endDate,
             endTime: appointmentData.endTime,
             status: appointmentData.status,
-            timezone: appointmentData.timezone,
-            amount: appointmentData.amount,
-            dueDate: appointmentData.dueDate || new Date(`${appointmentData.startDate}T${appointmentData.startTime}`),
-            paymentMethodId: appointmentData.paymentMethodId,
-            notes: appointmentData.notes
+            amount: appointmentData.amount
           };
           const response = await appointmentsFinanceApi.create(financePayload);
           return response.data;

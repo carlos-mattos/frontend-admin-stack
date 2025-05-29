@@ -1,17 +1,15 @@
-import { useState } from 'react';
+import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import {
   Box,
   Button,
   Card,
   CardContent,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   IconButton,
-  MenuItem,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -19,35 +17,49 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
-  FormControlLabel
+  Typography
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { usePaymentMethods } from 'hooks/usePaymentMethods';
-import { PaymentMethod, PaymentMethodLabel } from 'types/payment';
+import React, { useState } from 'react';
+import { paymentMethodsApi } from '../../../api/index';
 
 const PaymentMethods = () => {
-  const { methods, loading, error, createMethod, updateMethod, deleteMethod } = usePaymentMethods();
+  const [methods, setMethods] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [editingMethod, setEditingMethod] = useState(null);
   const [formData, setFormData] = useState({
-    type: '',
-    name: '',
-    allowPartial: false,
-    installments: 1
+    name: ''
   });
+
+  // Carregar métodos da API
+  const fetchMethods = async () => {
+    setLoading(true);
+    try {
+      const response = await paymentMethodsApi.list();
+      setMethods(response.data);
+    } catch (err) {
+      setError('Erro ao carregar métodos de pagamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carrega ao montar
+  React.useEffect(() => {
+    fetchMethods();
+  }, []);
 
   const handleOpen = (method = null) => {
     if (method) {
       setEditingMethod(method);
-      setFormData(method);
+      setFormData({
+        name: method.name
+      });
     } else {
       setEditingMethod(null);
       setFormData({
-        type: '',
-        name: '',
-        allowPartial: false,
-        installments: 1
+        name: ''
       });
     }
     setOpen(true);
@@ -60,25 +72,31 @@ const PaymentMethods = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       if (editingMethod) {
-        await updateMethod(editingMethod.id, formData);
+        await paymentMethodsApi.update(editingMethod._id, formData);
       } else {
-        await createMethod(formData);
+        await paymentMethodsApi.create(formData);
       }
       handleClose();
+      fetchMethods();
     } catch (err) {
-      console.error('Erro ao salvar método:', err);
+      setError('Erro ao salvar método');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir este método de pagamento?')) {
-      try {
-        await deleteMethod(id);
-      } catch (err) {
-        console.error('Erro ao excluir método:', err);
-      }
+    setLoading(true);
+    try {
+      await paymentMethodsApi.remove(id);
+      fetchMethods();
+    } catch (err) {
+      setError('Erro ao excluir método');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,24 +122,18 @@ const PaymentMethods = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell>Permite Parcelamento</TableCell>
-                  <TableCell>Parcelas</TableCell>
                   <TableCell align="right">Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {methods.map((method) => (
-                  <TableRow key={method.id}>
+                  <TableRow key={method._id || method.id}>
                     <TableCell>{method.name}</TableCell>
-                    <TableCell>{PaymentMethodLabel[method.type]}</TableCell>
-                    <TableCell>{method.allowPartial ? 'Sim' : 'Não'}</TableCell>
-                    <TableCell>{method.installments}</TableCell>
                     <TableCell align="right">
                       <IconButton onClick={() => handleOpen(method)} color="primary">
                         <EditIcon />
                       </IconButton>
-                      <IconButton onClick={() => handleDelete(method.id)} color="error">
+                      <IconButton onClick={() => handleDelete(method._id || method.id)} color="error">
                         <DeleteIcon />
                       </IconButton>
                     </TableCell>
@@ -140,22 +152,6 @@ const PaymentMethods = () => {
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <TextField
-                  select
-                  fullWidth
-                  label="Tipo"
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  required
-                >
-                  {Object.entries(PaymentMethod).map(([key, value]) => (
-                    <MenuItem key={value} value={value}>
-                      {PaymentMethodLabel[value]}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
                   fullWidth
                   label="Nome"
                   value={formData.name}
@@ -163,30 +159,6 @@ const PaymentMethods = () => {
                   required
                 />
               </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.allowPartial}
-                      onChange={(e) => setFormData({ ...formData, allowPartial: e.target.checked })}
-                    />
-                  }
-                  label="Permitir Pagamento Parcial"
-                />
-              </Grid>
-              {formData.allowPartial && (
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="Número de Parcelas"
-                    value={formData.installments}
-                    onChange={(e) => setFormData({ ...formData, installments: parseInt(e.target.value) })}
-                    inputProps={{ min: 1, max: 12 }}
-                    required
-                  />
-                </Grid>
-              )}
             </Grid>
           </DialogContent>
           <DialogActions>
@@ -201,4 +173,4 @@ const PaymentMethods = () => {
   );
 };
 
-export default PaymentMethods; 
+export default PaymentMethods;

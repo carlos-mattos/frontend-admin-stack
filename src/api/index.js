@@ -47,4 +47,8 @@ export const appointmentsFinanceApi = {
   create: (payload) => api.post('/appointments/finance', payload)
 };
 
+export const accountsReceivableApi = buildCRUD('/accounts-receivable');
+
+export const paymentMethodsApi = buildCRUD('/payment-methods');
+
 export default api;
