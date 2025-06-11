@@ -30,8 +30,10 @@ import * as Yup from 'yup';
 
 import { useCallback, useMemo } from 'react';
 
-import { customersApi, professionalsApi } from 'api';
+import { appointmentsApi, customersApi, professionalsApi } from 'api';
+import { useAppointmentsFinance } from 'hooks/useAppointmentsFinance';
 import { gridSpacing } from 'store/constant';
+import { AppointmentStatus } from './AppointmentStatus';
 
 const BASE_EVENT = {
   title: '',
@@ -43,7 +45,7 @@ const BASE_EVENT = {
   startTime: '',
   endDate: '',
   endTime: '',
-  status: 'Agendado'
+  status: AppointmentStatus.SCHEDULED
 };
 
 const validationSchema = Yup.object().shape({
@@ -55,7 +57,7 @@ const validationSchema = Yup.object().shape({
   startTime: Yup.string().required('Horário de início é obrigatório'),
   endDate: Yup.string().required('Data de término é obrigatória'),
   endTime: Yup.string().required('Horário de término é obrigatório'),
-  status: Yup.string().oneOf(['Agendado', 'Cancelado', 'Bloqueio', 'Pré-Agendado'], 'Status inválido')
+  status: Yup.string().oneOf(Object.values(AppointmentStatus), 'Status inválido')
 });
 
 const buildInitialValues = (event, range) => {
@@ -69,32 +71,32 @@ const buildInitialValues = (event, range) => {
     };
   }
 
-  if (range) {
-    return {
-      ...BASE_EVENT,
-      startDateTime: range.start,
-      endDateTime: range.end,
-      startDate: range.start.toISOString().split('T')[0],
-      startTime: range.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      endDate: range.end.toISOString().split('T')[0],
-      endTime: range.end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    };
-  }
-
-  return BASE_EVENT;
+  const now = new Date();
+  return {
+    ...BASE_EVENT,
+    startDateTime: now,
+    endDateTime: null,
+    startDate: now.toISOString().split('T')[0],
+    startTime: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    endDate: '',
+    endTime: ''
+  };
 };
 
-export default function AddEventForm({ event, range, handleDelete, handleCreate, handleUpdate, onCancel }) {
-  const isReadOnly = event?.status === 'Cancelado';
+export default function AddEventForm({ event, range, onSuccess, onCancel, onDelete }) {
+  const isReadOnly = event?.status === AppointmentStatus.CANCELLED;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [professionals, setProfessionals] = useState([]);
-  const [services, setServices] = useState([]);
   const [availableServices, setAvailableServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [conflictError, setConflictError] = useState(null);
+
+  const { handleAppointmentCreate, handleAppointmentUpdate } = useAppointmentsFinance();
+
+  const isEditMode = !!(event && event.id);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -141,6 +143,31 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
         setError(null);
 
         try {
+          if (values.allDay) {
+            values.endDate = values.startDate;
+            values.endTime = '23:59';
+          }
+
+          const availabilityCheck = await appointmentsApi.checkAvailability({
+            professional: values.professional,
+            startDate: values.startDate,
+            startTime: values.startTime,
+            endDate: values.endDate,
+            endTime: values.endTime,
+            excludeId: event?.id || null
+          });
+
+          if (!availabilityCheck.data.available) {
+            setConflictError('Não é possível agendar neste horário. Por favor, selecione outro.');
+            helpers.setSubmitting(false);
+            return;
+          }
+
+          const amount = (values.services || []).reduce((total, serviceId) => {
+            const serviceObj = availableServices.find((s) => s.id === serviceId);
+            return total + (serviceObj?.price || 0);
+          }, 0);
+
           const payload = {
             ...values,
             services: values.services,
@@ -148,32 +175,44 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
             endDate: values.endDate,
             startTime: values.startTime,
             endTime: values.endTime,
-            timezone: 'America/Sao_Paulo'
+            timezone: 'America/Sao_Paulo',
+            amount
           };
 
-          // Remove schedule from payload since it's not being used
           delete payload.schedule;
 
-          console.log('Sending payload:', payload);
-
           if (event?.id) {
-            await handleUpdate(event.id, payload);
+            await handleAppointmentUpdate(event.id, payload);
           } else {
-            await handleCreate(payload);
+            await handleAppointmentCreate(payload);
           }
+          if (onSuccess) onSuccess();
           onCancel();
         } catch (error) {
           console.error('Error in form submission:', error);
-          setError('Erro ao salvar o agendamento');
+          setError(
+            <>
+              Erro ao salvar o agendamento. Verifique se o profissional possui agenda no horário selecionado.{' '}
+              <a
+                href={`professionals/${values.professional}/schedule`}
+                style={{ color: '#1976d2', textDecoration: 'underline' }}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                aqui
+              </a>
+              .
+            </>
+          );
         } finally {
           helpers.setSubmitting(false);
         }
       },
-      [event, handleCreate, handleUpdate, onCancel, isDeleting, isReadOnly]
+      [event, onSuccess, onCancel, isDeleting, isReadOnly, handleAppointmentCreate, handleAppointmentUpdate, availableServices]
     )
   });
 
-  const { values, errors, touched, isSubmitting, getFieldProps, handleSubmit, setFieldValue } = formik;
+  const { values, errors, touched, isSubmitting, getFieldProps, setFieldValue } = formik;
 
   useEffect(() => {
     const loadProfessionalServices = async () => {
@@ -186,10 +225,11 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
         setLoading(true);
         const response = await professionalsApi.getServices(values.professional);
         setAvailableServices(
-          (response.data || []).map(({ _id, name, duration }) => ({
+          (response.data || []).map(({ _id, name, duration, price }) => ({
             id: _id,
             name,
-            duration
+            duration,
+            price
           }))
         );
       } catch (error) {
@@ -213,44 +253,11 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
     }
   }, [values.allDay, values.startDateTime, setFieldValue]);
 
-  const getSelectedServices = () => {
-    if (!values.services || !services.length) {
-      return [];
-    }
-    return services.filter((service) => values.services.includes(service.id));
-  };
-
-  const handleServiceChange = (event, newValue) => {
-    const selectedServices = Array.isArray(newValue) ? newValue : [newValue];
-    setFieldValue('services', selectedServices);
-
-    // Calculate end time based on service duration
-    if (selectedServices.length > 0 && values.startDate && values.startTime) {
-      const totalDuration = selectedServices.reduce((acc, service) => {
-        const serviceData = availableServices.find((s) => s.id === service);
-        return acc + (serviceData?.duration || 0);
-      }, 0);
-
-      if (totalDuration > 0) {
-        const [hours, minutes] = values.startTime.split(':').map(Number);
-        const startDate = new Date(values.startDate);
-        startDate.setHours(hours, minutes);
-
-        const endDate = new Date(startDate);
-        endDate.setHours(endDate.getHours() + totalDuration);
-
-        setFieldValue('endDate', endDate.toISOString().split('T')[0]);
-        setFieldValue('endTime', endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-      }
-    }
-  };
-
   const handleDeleteClick = async () => {
     try {
       setIsDeleting(true);
-      const isPermanent = event?.status === 'Cancelado';
-
-      await handleDelete(event.id, isPermanent);
+      const isPermanent = event?.status === AppointmentStatus.CANCELLED;
+      await onDelete(event.id, isPermanent);
       onCancel();
     } catch (error) {
     } finally {
@@ -311,12 +318,22 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                   {...getFieldProps('description')}
                   error={Boolean(touched.description && errors.description)}
                   helperText={touched.description && errors.description}
+                  disabled={isReadOnly}
                 />
               </Grid>
 
               <Grid size={12}>
                 <FormControlLabel
-                  control={<Switch name="allDay" checked={values.allDay} onChange={(e, checked) => setFieldValue('allDay', checked)} />}
+                  control={
+                    <Switch
+                      name="allDay"
+                      checked={values.allDay}
+                      onChange={(e, checked) => {
+                        if (!isReadOnly && !isEditMode) setFieldValue('allDay', checked);
+                      }}
+                      disabled={isEditMode}
+                    />
+                  }
                   label="Dia Inteiro"
                 />
               </Grid>
@@ -329,7 +346,7 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                   {...getFieldProps('customer')}
                   error={Boolean(touched.customer && errors.customer)}
                   helperText={touched.customer && errors.customer}
-                  disabled={loading || isReadOnly}
+                  disabled={isEditMode}
                   SelectProps={{
                     displayEmpty: true,
                     renderValue: (selected) => {
@@ -366,7 +383,7 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                   {...getFieldProps('professional')}
                   error={Boolean(touched.professional && errors.professional)}
                   helperText={touched.professional && errors.professional}
-                  disabled={loading || isReadOnly}
+                  disabled={isEditMode}
                   SelectProps={{
                     displayEmpty: true,
                     renderValue: (selected) => {
@@ -402,13 +419,17 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                   multiple
                   label="Serviços"
                   value={Array.isArray(values.services) ? values.services : []}
-                  onChange={(e) => {
-                    const selected = e.target.value;
-                    setFieldValue('services', Array.isArray(selected) ? selected : []);
-                  }}
+                  onChange={
+                    isEditMode
+                      ? () => {}
+                      : (e) => {
+                          const selected = e.target.value;
+                          setFieldValue('services', Array.isArray(selected) ? selected : []);
+                        }
+                  }
                   error={Boolean(touched.services && errors.services)}
                   helperText={touched.services && errors.services}
-                  disabled={loading || isReadOnly || !values.professional}
+                  disabled={isEditMode}
                   SelectProps={{
                     multiple: true,
                     displayEmpty: true,
@@ -450,29 +471,28 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                   label="Data e Hora de Início"
                   value={values.startDateTime}
                   format="dd/MM/yyyy HH:mm"
-                  onChange={(date) => {
-                    if (date) {
-                      setFieldValue('startDateTime', date);
-                      setFieldValue('startDate', date.toISOString().split('T')[0]);
-                      setFieldValue('startTime', date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-
-                      // Recalculate end time if services are selected
-                      if (values.services && values.services.length > 0) {
-                        const totalDuration = values.services.reduce((acc, service) => {
-                          const serviceData = availableServices.find((s) => s.id === service);
-                          return acc + (serviceData?.duration || 0);
-                        }, 0);
-
-                        if (totalDuration > 0) {
-                          const endDate = new Date(date);
-                          endDate.setHours(endDate.getHours() + totalDuration);
-                          setFieldValue('endDateTime', endDate);
-                          setFieldValue('endDate', endDate.toISOString().split('T')[0]);
-                          setFieldValue('endTime', endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                  onChange={
+                    isEditMode
+                      ? () => {}
+                      : (date) => {
+                          setFieldValue('startDateTime', date);
+                          setFieldValue('startDate', date.toISOString().split('T')[0]);
+                          setFieldValue('startTime', date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                          if (values.services && values.services.length > 0) {
+                            const totalDuration = values.services.reduce((acc, service) => {
+                              const serviceData = availableServices.find((s) => s.id === service);
+                              return acc + (serviceData?.duration || 0);
+                            }, 0);
+                            if (totalDuration > 0) {
+                              const endDate = new Date(date);
+                              endDate.setHours(endDate.getHours() + totalDuration);
+                              setFieldValue('endDateTime', endDate);
+                              setFieldValue('endDate', endDate.toISOString().split('T')[0]);
+                              setFieldValue('endTime', endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                            }
+                          }
                         }
-                      }
-                    }
-                  }}
+                  }
                   slotProps={{
                     textField: {
                       fullWidth: true,
@@ -483,10 +503,13 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                           <InputAdornment position="end" sx={{ cursor: 'pointer' }}>
                             <DateRangeIcon />
                           </InputAdornment>
-                        )
+                        ),
+                        readOnly: isEditMode,
+                        disabled: isEditMode
                       }
                     }
                   }}
+                  disabled={isEditMode}
                 />
               </Grid>
 
@@ -496,13 +519,15 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                     label="Data e Hora de Término"
                     value={values.endDateTime}
                     format="dd/MM/yyyy HH:mm"
-                    onChange={(date) => {
-                      if (date) {
-                        setFieldValue('endDateTime', date);
-                        setFieldValue('endDate', date.toISOString().split('T')[0]);
-                        setFieldValue('endTime', date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
-                      }
-                    }}
+                    onChange={
+                      isEditMode
+                        ? () => {}
+                        : (date) => {
+                            setFieldValue('endDateTime', date);
+                            setFieldValue('endDate', date.toISOString().split('T')[0]);
+                            setFieldValue('endTime', date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                          }
+                    }
                     slotProps={{
                       textField: {
                         fullWidth: true,
@@ -513,10 +538,13 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                             <InputAdornment position="end" sx={{ cursor: 'pointer' }}>
                               <DateRangeIcon />
                             </InputAdornment>
-                          )
+                          ),
+                          readOnly: isEditMode,
+                          disabled: isEditMode
                         }
                       }
                     }}
+                    disabled={isEditMode}
                   />
                 </Grid>
               ) : (
@@ -543,19 +571,19 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
                     Voltar
                   </Button>
                   <Button variant="contained" color="error" onClick={handleDeleteClick} disabled={isDeleting}>
-                    {event?.status === 'Cancelado' ? 'Excluir Permanentemente' : 'Cancelar Evento'}
+                    {event?.status === AppointmentStatus.CANCELLED ? 'Excluir Permanentemente' : 'Cancelar Evento'}
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button variant="outlined" onClick={onCancel} disabled={isSubmitting || isDeleting}>
+                  <Button variant="outlined" onClick={onCancel} disabled={isSubmitting || isDeleting || isReadOnly}>
                     Cancelar
                   </Button>
                   {!isReadOnly && (
                     <Button
                       type="submit"
                       variant="contained"
-                      disabled={isSubmitting || isDeleting}
+                      disabled={isSubmitting || isDeleting || isReadOnly}
                       onClick={() => {
                         console.log('Save button clicked');
                         console.log('Form values:', formik.values);
@@ -578,8 +606,7 @@ export default function AddEventForm({ event, range, handleDelete, handleCreate,
 AddEventForm.propTypes = {
   event: PropTypes.object,
   range: PropTypes.object,
-  handleDelete: PropTypes.func.isRequired,
-  handleCreate: PropTypes.func.isRequired,
-  handleUpdate: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired
+  onSuccess: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired
 };

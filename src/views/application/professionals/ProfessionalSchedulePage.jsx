@@ -1,53 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import {
+  Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon
+} from '@mui/icons-material';
+import {
+  Alert,
   Box,
   Button,
-  Card,
   CardContent,
+  CircularProgress,
+  Collapse,
   Grid,
-  Typography,
+  IconButton,
+  Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
-  Tooltip,
-  CircularProgress,
-  Alert,
-  Chip,
   TextField,
-  MenuItem,
-  Stack,
-  Collapse,
-  Paper
+  Tooltip,
+  Typography
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
-} from '@mui/icons-material';
-import MainCard from 'ui-component/cards/MainCard';
 import { schedulesApi } from 'api/index';
-
-const statusColors = {
-  scheduled: 'success',
-  cancelled: 'error',
-  completed: 'info',
-  blocked: 'warning'
-};
-
-const statusTranslations = {
-  scheduled: 'Agendado',
-  cancelled: 'Cancelado',
-  completed: 'Concluído',
-  blocked: 'Bloqueado'
-};
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import MainCard from 'ui-component/cards/MainCard';
 
 const weekDaysTranslations = {
   Monday: 'Segunda-feira',
@@ -91,18 +74,15 @@ function ScheduleRow({ schedule, onEdit, onDelete }) {
           {schedule.startTime} - {schedule.endTime}
         </TableCell>
         <TableCell>{recurrenceTypes.find((r) => r.value === schedule.recurrence)?.label || 'Nenhuma'}</TableCell>
-        <TableCell>
-          <Chip label={statusTranslations[schedule.status]} color={statusColors[schedule.status]} size="small" />
-        </TableCell>
         <TableCell align="right">
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Tooltip title="Editar">
-              <IconButton size="small" onClick={() => onEdit(schedule._id)} disabled={schedule.status === 'cancelled'}>
+              <IconButton size="small" onClick={() => onEdit(schedule._id)}>
                 <EditIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Excluir">
-              <IconButton size="small" onClick={() => onDelete(schedule._id)} disabled={schedule.status === 'cancelled'}>
+              <IconButton size="small" onClick={() => onDelete(schedule._id)}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -158,7 +138,6 @@ export default function ProfessionalSchedulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    status: '',
     startDate: '',
     endDate: ''
   });
@@ -181,11 +160,11 @@ export default function ProfessionalSchedulePage() {
   }, [id, filters]);
 
   const handleCreateSchedule = () => {
-    navigate(`/apps/profissionais/${id}/agenda/novo`);
+    navigate(`/professionals/${id}/schedule/new`);
   };
 
   const handleEditSchedule = (scheduleId) => {
-    navigate(`/apps/profissionais/${id}/agenda/${scheduleId}/editar`);
+    navigate(`/professionals/${id}/schedule/${scheduleId}/edit`);
   };
 
   const handleDeleteSchedule = async (scheduleId) => {
@@ -193,7 +172,11 @@ export default function ProfessionalSchedulePage() {
       await schedulesApi.remove(scheduleId);
       await loadSchedules();
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao excluir horário');
+      const message =
+        err.response?.data?.message === 'Cannot delete schedule with existing appointments'
+          ? 'Não é possível excluir um horário que possui agendamentos'
+          : err.response?.data?.message || 'Erro ao excluir horário';
+      setError(message);
     }
   };
 
@@ -205,7 +188,7 @@ export default function ProfessionalSchedulePage() {
   };
 
   const handleBack = () => {
-    navigate('/apps/profissionais');
+    navigate('/professionals');
   };
 
   // Agrupar horários por série
@@ -232,16 +215,7 @@ export default function ProfessionalSchedulePage() {
         </Stack>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={4}>
-            <TextField select fullWidth label="Status" value={filters.status} onChange={handleFilterChange('status')}>
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="scheduled">Agendado</MenuItem>
-              <MenuItem value="cancelled">Cancelado</MenuItem>
-              <MenuItem value="completed">Concluído</MenuItem>
-              <MenuItem value="blocked">Bloqueado</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
               type="date"
@@ -251,7 +225,7 @@ export default function ProfessionalSchedulePage() {
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
               type="date"
@@ -277,20 +251,19 @@ export default function ProfessionalSchedulePage() {
                 <TableCell>Data</TableCell>
                 <TableCell>Horário</TableCell>
                 <TableCell>Recorrência</TableCell>
-                <TableCell>Status</TableCell>
                 <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={5} align="center">
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
               ) : Object.keys(groupedSchedules).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={5} align="center">
                     Nenhum horário encontrado
                   </TableCell>
                 </TableRow>

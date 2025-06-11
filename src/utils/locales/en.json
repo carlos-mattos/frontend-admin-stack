@@ -201,5 +201,10 @@
   "Dashboard": "Dashboard",
   "Profissionais": "Profissionais",
   "Serviços": "Serviços",
-  "Clientes": "Clientes"
+  "Clientes": "Clientes",
+  "Financeiro": "Financeiro",
+  "Contas a Receber": "Contas a Receber",
+  "Contas a Pagar": "Contas a Pagar",
+  "Fluxo de Caixa": "Fluxo de Caixa",
+  "Métodos de Pagamento": "Métodos de Pagamento"
 }

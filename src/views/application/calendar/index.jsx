@@ -1,71 +1,70 @@
 import { Button, Dialog, useMediaQuery } from '@mui/material';
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { format } from 'date-fns';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
+import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import timelinePlugin from '@fullcalendar/timeline';
 
-import AddEventForm from './AddEventForm';
-import BlockEventForm from './BlockEventForm';
-import Toolbar from './Toolbar';
-import CalendarStyled from './CalendarStyled';
 import Loader from 'ui-component/Loader';
 import MainCard from 'ui-component/cards/MainCard';
 import SubCard from 'ui-component/cards/SubCard';
+import AddEventForm from './AddEventForm';
+import { AppointmentStatus, getStatusClassName } from './AppointmentStatus';
+import BlockEventForm from './BlockEventForm';
+import CalendarStyled from './CalendarStyled';
+import Toolbar from './Toolbar';
 
 import AddAlarmTwoToneIcon from '@mui/icons-material/AddAlarmTwoTone';
 import BlockIcon from '@mui/icons-material/Block';
 import { ptBR } from 'date-fns/locale';
 
 import { appointmentsApi } from 'api';
-
-const normalize = (src) => {
-  if (src.start instanceof Date) {
-    return {
-      ...src.extendedProps,
-      startDate: format(src.start, 'yyyy-MM-dd'),
-      startTime: format(src.start, 'HH:mm'),
-      endDate: format(src.end, 'yyyy-MM-dd'),
-      endTime: format(src.end, 'HH:mm')
-    };
-  }
-  return src;
-};
+import { formatInTimeZone } from 'date-fns-tz';
 
 const formatEvent = (event) => {
-  if (!event || !event.startDate || !event.startTime) {
+  if (!event || !event.startDate) {
     return null;
   }
 
   try {
-    const startDateTime = new Date(`${event.startDate}T${event.startTime}:00`);
-    const endDateTime = new Date(`${event.endDate}T${event.endTime}:00`);
+    const timeZone = 'America/Sao_Paulo';
+    const startDateTime = new Date(`${event.startDate}T${event.startTime}`);
+    const endDateTime = new Date(`${event.endDate}T${event.endTime}`);
 
-    const status = event.status || 'Agendado';
-    const firstService = Array.isArray(event.services) && event.services.length ? event.services[0] : event.service;
+    const status = event.status || AppointmentStatus.SCHEDULED;
+    const firstService = Array.isArray(event.serviceIds) && event.serviceIds.length ? event.serviceIds[0] : null;
 
     return {
       id: event._id,
-      title: event.title || `${event.customer?.fullName || 'Cliente não definido'} - ${firstService?.name || 'Serviço não definido'}`,
-      start: startDateTime,
-      end: endDateTime,
+      title:
+        event.title !== undefined && event.title !== null
+          ? event.title
+          : `${event.customerId?.fullName || 'Cliente não definido'} - ${firstService || 'Serviço não definido'}`,
+      start: formatInTimeZone(startDateTime, timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+      end: formatInTimeZone(endDateTime, timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
       allDay: false,
-      color: event.status,
+      color: status,
       textColor: '#ffffff',
-      customer: event.customer?._id,
-      professional: event.professional?._id,
-      services: event.services?.map((s) => s._id) ?? [],
-      status: event.status,
-      description: event.description || '',
-      classNames: [status.toLowerCase().replace(' ', '')],
+      classNames: [getStatusClassName(status)],
       startDateTime,
-      endDateTime
+      endDateTime,
+      extendedProps: {
+        startDate: event.startDate,
+        startTime: event.startTime,
+        endDate: event.endDate,
+        endTime: event.endTime,
+        customer: event.customerId?._id,
+        professional: event.professionalId?._id,
+        services: event.serviceIds ?? [],
+        status: status,
+        description: event.description || ''
+      }
     };
   } catch (error) {
+    console.error('Error formatting event:', error);
     return null;
   }
 };
@@ -85,6 +84,8 @@ export default function Calendar({ initialEvents = [], customersList = [], profe
       setLoading(true);
       const response = await appointmentsApi.list();
       const formattedEvents = response.data.map(formatEvent).filter(Boolean);
+      console.log('formattedEvents', formattedEvents);
+
       setEvents(formattedEvents);
     } catch (error) {
     } finally {
@@ -107,95 +108,13 @@ export default function Calendar({ initialEvents = [], customersList = [], profe
   };
   useEffect(() => changeView(sm ? 'listWeek' : 'dayGridMonth'), [sm]);
 
-  const handleCreate = async (raw) => {
-    try {
-      const data = normalize(raw);
-      const payload = { ...data, timezone: 'America/Sao_Paulo' };
-
-      const availabilityCheck = await appointmentsApi.checkAvailability({
-        professional: payload.professional,
-        startDate: payload.startDate,
-        startTime: payload.startTime,
-        endDate: payload.endDate,
-        endTime: payload.endTime,
-        excludeId: null
-      });
-
-      if (!availabilityCheck.data.available) {
-        throw new Error('Conflito de horário detectado');
-      }
-
-      const response = await appointmentsApi.create({
-        ...payload,
-        schedule: availabilityCheck.data.scheduleId
-      });
-
-      if (response.data) {
-        await loadEvents();
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleUpdate = async (id, raw) => {
-    try {
-      const data = normalize(raw);
-      const payload = { ...data, timezone: 'America/Sao_Paulo' };
-
-      const availabilityCheck = await appointmentsApi.checkAvailability({
-        professional: payload.professional,
-        startDate: payload.startDate,
-        startTime: payload.startTime,
-        endDate: payload.endDate,
-        endTime: payload.endTime,
-        excludeId: id
-      });
-
-      if (!availabilityCheck.data.available) {
-        throw new Error('Conflito de horário detectado');
-      }
-
-      const response = await appointmentsApi.update(id, {
-        ...payload,
-        schedule: availabilityCheck.data.scheduleId
-      });
-
-      if (response.data) {
-        await loadEvents();
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleStatusUpdate = async (id, status) => {
-    try {
-      await appointmentsApi.updateStatus(id, { status });
-      await loadEvents();
-    } catch (error) {
-      throw error;
-    }
-  };
-
   const del = async (id, isPermanent = false) => {
     try {
-      const event = events.find((e) => e.id === id);
-
       if (isPermanent) {
         await appointmentsApi.remove(id);
         setEvents((e) => e.filter((ev) => ev.id !== id));
       } else {
-        const payload = {
-          ...event,
-          status: 'Cancelado',
-          startDate: event.startDate,
-          startTime: event.startTime,
-          endDate: event.endDate,
-          endTime: event.endTime
-        };
-
-        await appointmentsApi.update(id, payload);
+        await appointmentsApi.updateStatus(id, { status: AppointmentStatus.CANCELLED });
         await loadEvents();
       }
     } catch (error) {}
@@ -214,15 +133,28 @@ export default function Calendar({ initialEvents = [], customersList = [], profe
       id: event.id,
       title: event.title,
       ...event.extendedProps,
-      startDateTime: new Date(event.start),
-      endDateTime: new Date(event.end),
-      startDate: event.start.toISOString().split('T')[0],
-      startTime: event.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      endDate: event.end.toISOString().split('T')[0],
-      endTime: event.end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      startDate: event.extendedProps?.startDate || event.extendedProps.startDate || '',
+      startTime: event.extendedProps?.startTime || event.extendedProps.startTime || '',
+      endDate: event.extendedProps?.endDate || event.extendedProps.endDate || '',
+      endTime: event.extendedProps?.endTime || event.extendedProps.endTime || '',
+      startDateTime:
+        event.extendedProps?.startDate && event.extendedProps?.startTime
+          ? new Date(`${event.extendedProps.startDate}T${event.extendedProps.startTime}`)
+          : event.extendedProps.startDate && event.extendedProps.startTime
+            ? new Date(`${event.extendedProps.startDate}T${event.extendedProps.startTime}`)
+            : null,
+      endDateTime:
+        event.extendedProps?.endDate && event.extendedProps?.endTime
+          ? new Date(`${event.extendedProps.endDate}T${event.extendedProps.endTime}`)
+          : event.extendedProps.endDate && event.extendedProps.endTime
+            ? new Date(`${event.extendedProps.endDate}T${event.extendedProps.endTime}`)
+            : null,
+      status: event.extendedProps?.status || event.extendedProps.status,
+      customer: event.extendedProps?.customer || event.extendedProps.customer,
+      services: event.extendedProps?.services || event.extendedProps.services
     };
 
-    const isBlock = copy.status === 'Bloqueio' || (!copy.customer && (!copy.services || copy.services.length === 0));
+    const isBlock = copy.status === AppointmentStatus.BLOCKED || (!copy.customer && (!copy.services || copy.services.length === 0));
 
     openModal(isBlock ? 'block' : 'event', { event: copy });
   };
@@ -276,10 +208,10 @@ export default function Calendar({ initialEvents = [], customersList = [], profe
             eventResizableFromStart
             select={onSelectRange}
             eventClick={onSelectEvent}
-            eventDrop={({ event }) => handleUpdate(event.id, event)}
-            eventResize={({ event }) => handleUpdate(event.id, event)}
+            eventDrop={({ event }) => {}}
+            eventResize={({ event }) => {}}
             eventDidMount={({ el, event }) => {
-              const status = event.status?.toLowerCase().replace(' ', '') || 'agendado';
+              const status = event.status?.toLowerCase().replace(' ', '') || AppointmentStatus.SCHEDULED;
               el.classList.add(status);
             }}
             timeZone="America/Sao_Paulo"
@@ -292,34 +224,15 @@ export default function Calendar({ initialEvents = [], customersList = [], profe
           <AddEventForm
             event={modal.event}
             range={modal.range}
-            handleCreate={handleCreate}
-            handleUpdate={handleUpdate}
-            handleDelete={del}
+            onSuccess={loadEvents}
             onCancel={closeModal}
+            onDelete={del}
             customersList={customersList}
             professionalsList={professionalsList}
             servicesList={servicesList}
           />
         )}
-        {modal.type === 'block' && (
-          <BlockEventForm
-            event={modal.event}
-            handleCreate={async (data) => {
-              try {
-                if (modal.event?.id) {
-                  await handleUpdate(modal.event.id, { ...data, status: 'Bloqueio' });
-                } else {
-                  await handleCreate({ ...data, status: 'Bloqueio' });
-                }
-                await loadEvents();
-              } catch (error) {
-                throw error;
-              }
-            }}
-            handleDelete={del}
-            onCancel={closeModal}
-          />
-        )}
+        {modal.type === 'block' && <BlockEventForm event={modal.event} onSuccess={loadEvents} onCancel={closeModal} onDelete={del} />}
       </Dialog>
     </MainCard>
   );

@@ -295,12 +295,12 @@ export default function Profissionais() {
 
   const handleDetails = () => {
     setMenuAnchor(null);
-    selectedProfessional?._id && navigate(`/apps/profissionais/detalhes/${selectedProfessional._id}`);
+    selectedProfessional?._id && navigate(`/professionals/${selectedProfessional._id}`);
   };
 
   const handleSchedule = () => {
     setMenuAnchor(null);
-    selectedProfessional?._id && navigate(`/apps/profissionais/${selectedProfessional._id}/agenda`);
+    selectedProfessional?._id && navigate(`/professionals/${selectedProfessional._id}/schedule`);
   };
 
   const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredRows.length) : 0;

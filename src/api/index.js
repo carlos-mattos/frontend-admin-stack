@@ -43,4 +43,18 @@ export const appointmentsApi = {
   checkAvailability: (payload) => api.post('/appointments/check-availability', payload)
 };
 
+export const appointmentsFinanceApi = {
+  create: (payload) => api.post('/appointments/finance', payload)
+};
+
+export const accountsReceivableApi = buildCRUD('/accounts-receivable');
+
+export const paymentMethodsApi = buildCRUD('/payment-methods');
+
+export const accountsPayableApi = buildCRUD('/accounts-payable');
+
+export const cashFlowReportApi = {
+  get: (filters = {}) => api.get('/cash-flow-report', { params: filters })
+};
+
 export default api;
